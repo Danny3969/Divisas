@@ -25,7 +25,7 @@ export class CashController {
   }
 
   @Post('sessions')
-  @Roles(Role.CASHIER, Role.SUPERVISOR)
+  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.ADMIN, Role.TREASURY)
   openSession(@Body() dto: OpenCashSessionDto, @CurrentUser() user: AuthUser) {
     return this.service.openSession(dto, user);
   }

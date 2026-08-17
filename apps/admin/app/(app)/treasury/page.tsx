@@ -128,8 +128,14 @@ export default function TreasuryPage() {
             </tr>
           </thead>
           <tbody>
-            {(settlements.length > 0 ? settlements : overview.recentSettlements).map(
-              (s) => (
+            {((settlements && settlements.length > 0 ? settlements : overview?.recentSettlements) ?? []).length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
+                  Sin liquidaciones registradas en este momento.
+                </td>
+              </tr>
+            ) : (
+              ((settlements && settlements.length > 0 ? settlements : overview?.recentSettlements) ?? []).map((s) => (
                 <tr key={s.id} className="border-b border-slate-50">
                   <td className="py-2">{fmtDate(s.createdAt)}</td>
                   <td className="py-2 font-mono font-medium">
@@ -140,7 +146,7 @@ export default function TreasuryPage() {
                   </td>
                   <td className="py-2">{s.status}</td>
                 </tr>
-              ),
+              ))
             )}
           </tbody>
         </table>

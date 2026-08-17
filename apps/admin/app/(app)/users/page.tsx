@@ -203,7 +203,13 @@ export default function UsersPage() {
                     </Badge>
                   </td>
                   <td className="py-3 text-xs text-slate-600">
-                    {u.office ? `${u.office.name} (${u.office.country.code})` : "Todas las agencias"}
+                    {u.office
+                      ? u.office.country?.code === "EC" || u.office.name.includes("Quito")
+                        ? "Ecuador"
+                        : u.office.country?.code === "PE" || u.office.name.includes("Lima")
+                        ? "Perú"
+                        : u.office.name
+                      : "Todas las agencias"}
                   </td>
                   <td className="py-3">
                     <button onClick={() => handleToggleActive(u)}>
@@ -296,11 +302,19 @@ export default function UsersPage() {
                 onChange={(e) => setOfficeId(e.target.value)}
               >
                 <option value="">Todas las Oficinas (Global)</option>
-                {offices.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name} ({o.country?.code ?? ""})
-                  </option>
-                ))}
+                {offices.map((o) => {
+                  const label =
+                    o.country?.code === "EC" || o.name.includes("Quito")
+                      ? "Ecuador"
+                      : o.country?.code === "PE" || o.name.includes("Lima")
+                      ? "Perú"
+                      : o.name;
+                  return (
+                    <option key={o.id} value={o.id}>
+                      {label}
+                    </option>
+                  );
+                })}
               </Select>
               <div className="flex gap-2 pt-2">
                 <Button

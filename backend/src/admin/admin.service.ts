@@ -172,31 +172,49 @@ export class AdminService {
    * Limpia datos de prueba/ficticios conservando infraestructura inicial (países, corredores, oficinas y cuentas).
    */
   async resetDemoData(actor: AuthUser) {
-    await this.prisma.$transaction([
-      this.prisma.transferEvent.deleteMany({}),
-      this.prisma.payment.deleteMany({}),
-      this.prisma.payout.deleteMany({}),
-      this.prisma.settlement.deleteMany({}),
-      this.prisma.riskAssessment.deleteMany({}),
-      this.prisma.riskAlert.deleteMany({}),
-      this.prisma.amlCase.deleteMany({}),
-      this.prisma.ledgerEntry.deleteMany({}),
-      this.prisma.transfer.deleteMany({}),
-      this.prisma.quote.deleteMany({}),
-      this.prisma.cashMovement.deleteMany({}),
-      this.prisma.cashSession.deleteMany({}),
-      this.prisma.cashAccount.updateMany({ data: { balance: 0 } }),
-    ]);
+    try {
+      await this.prisma.paymentMatch.deleteMany({});
+      await this.prisma.payment.deleteMany({});
+      await this.prisma.payout.deleteMany({});
+      await this.prisma.settlement.deleteMany({});
+      await this.prisma.riskAssessment.deleteMany({});
+      await this.prisma.transferEvent.deleteMany({});
+      await this.prisma.ledgerEntry.deleteMany({});
+      await this.prisma.transfer.deleteMany({});
+      await this.prisma.quote.deleteMany({});
+      await this.prisma.cashMovement.deleteMany({});
+      await this.prisma.cashSession.deleteMany({});
+      await this.prisma.bankTransaction.deleteMany({});
+      await this.prisma.riskAlert.deleteMany({});
+      await this.prisma.amlCase.deleteMany({});
+      await this.prisma.document.deleteMany({});
+      await this.prisma.beneficiaryAccount.deleteMany({});
+      await this.prisma.beneficiary.deleteMany({});
+      await this.prisma.customer.deleteMany({});
+      await this.prisma.auditLog.deleteMany({});
+      await this.prisma.user.deleteMany({ where: { email: { not: 'admin@divisas.com' } } });
+      await this.prisma.cashAccount.updateMany({ data: { balance: 0 } });
+      await this.prisma.ledgerAccount.updateMany({ data: { balance: 0 } });
 
-    await this.audit.record({
-      actor,
-      action: AuditAction.DELETE,
-      entity: 'SystemData',
-      entityId: 'reset-demo',
-      after: { action: 'PURGE_FICTITIOUS_DATA' },
-    });
+      // Actualizar nombres de agencias a solo "Ecuador" y "Perú"
+      await this.prisma.office.updateMany({ where: { country: { is: { code: 'EC' } } }, data: { name: 'Ecuador' } });
+      await this.prisma.office.updateMany({ where: { country: { is: { code: 'PE' } } }, data: { name: 'Perú' } });
 
-    return { success: true, message: 'Datos ficticios eliminados. Sistema preparado para operaciones reales.' };
+      await this.audit.record({
+        actor,
+        action: AuditAction.DELETE,
+        entity: 'SystemData',
+        entityId: 'reset-demo',
+        after: { action: 'PURGE_FICTITIOUS_DATA' },
+      });
+
+      return { success: true, message: 'Datos ficticios eliminados correctamente. Sistema preparado para operaciones reales.' };
+    } catch (error) {
+      console.error('Error durante la depuración de datos ficticios:', error);
+      throw new BadRequestException(
+        `Error al limpiar datos: ${error instanceof Error ? error.message : 'Falló la eliminación de tablas vinculadas'}`
+      );
+    }
   }
 
   async auditLogs(query: { entity?: string; limit?: number }) {

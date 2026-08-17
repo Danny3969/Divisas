@@ -24,16 +24,16 @@ async function main() {
     await prisma.currency.upsert({ where: { code: c.code }, update: {}, create: c });
   }
 
-  // 2. Oficinas
+  // 2. Oficinas (Ecuador y Perú)
   const officeEc = await prisma.office.upsert({
     where: { id: 'office-ec' },
-    update: {},
-    create: { id: 'office-ec', name: 'Oficina Quito', countryId: ec.id, address: 'Quito, Ecuador' },
+    update: { name: 'Ecuador' },
+    create: { id: 'office-ec', name: 'Ecuador', countryId: ec.id, address: 'Ecuador' },
   });
   const officePe = await prisma.office.upsert({
     where: { id: 'office-pe' },
-    update: {},
-    create: { id: 'office-pe', name: 'Oficina Lima', countryId: pe.id, address: 'Lima, Perú' },
+    update: { name: 'Perú' },
+    create: { id: 'office-pe', name: 'Perú', countryId: pe.id, address: 'Perú' },
   });
 
   // 3. Corredores
