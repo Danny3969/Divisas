@@ -199,7 +199,7 @@ export default function CustomersPage() {
                       <div className="text-slate-400">{c.country?.name ?? "Ecuador / Perú"}</div>
                     </td>
                     <td className="py-3">{getKycBadge(c.kycStatus)}</td>
-                    <td className="py-3 text-xs text-slate-500">{fmtDate(c.createdAt)}</td>
+                    <td className="py-3 text-xs text-slate-500">{c.createdAt ? fmtDate(c.createdAt) : "—"}</td>
                     <td className="py-3 text-right space-x-2">
                       <Button
                         variant="secondary"

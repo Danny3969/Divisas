@@ -32,6 +32,7 @@ export interface AuthUser {
   role: Role;
   officeId?: string;
   officeName?: string;
+  office?: { id: string; name: string; country?: { code: string; name: string } };
 }
 
 export interface Corridor {
@@ -117,6 +118,7 @@ export interface Transfer {
   withdrawalUsed?: boolean;
   paymentMethod: PaymentMethod;
   payoutMethod: PayoutMethod;
+  remittanceReason?: string;
   createdAt: string;
   corridor: {
     direction: string;
@@ -151,6 +153,7 @@ export interface CashSession {
   openedAt: string;
   closedAt?: string;
   cashAccount?: { code: string; currency: string };
+  openedBy?: { fullName?: string; email?: string };
 }
 
 export interface ListResponse<T> {

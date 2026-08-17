@@ -15,6 +15,7 @@ import { get, post } from "@/lib/api";
 import { fmtMoney } from "@/lib/format";
 import type {
   Beneficiary,
+  CashAccount,
   Corridor,
   Country,
   Customer,

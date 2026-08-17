@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Alert, Badge, Button, Card, Spinner } from "@/components/ui";
-import { get } from "@/lib/api";
+import { get, post } from "@/lib/api";
 import { STATUS_COLORS, STATUS_LABELS, fmtDate, fmtMoney } from "@/lib/format";
 import type { Transfer } from "@/lib/types";
 

@@ -55,6 +55,7 @@ export interface Customer {
   phone?: string;
   kycStatus: "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
   country?: { code: string; name: string };
+  createdAt?: string;
 }
 
 export interface Country {
@@ -117,6 +118,7 @@ export interface Transfer {
   withdrawalUsed?: boolean;
   paymentMethod: PaymentMethod;
   payoutMethod: PayoutMethod;
+  remittanceReason?: string;
   createdAt: string;
   corridor: {
     direction: string;

@@ -75,7 +75,7 @@ export default function TransferDetailPage() {
   const [highBillSerials, setHighBillSerials] = useState("");
   const [cashAmountReceived, setCashAmountReceived] = useState("");
 
-  const sendAmountNum = Number(transfer.sendAmount);
+  const sendAmountNum = Number(transfer?.sendAmount || 0);
   const receivedNum = Number(cashAmountReceived || sendAmountNum);
   const changeDue = Math.max(0, receivedNum - sendAmountNum);
 
