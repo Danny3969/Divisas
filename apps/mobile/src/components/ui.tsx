@@ -2,6 +2,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -9,6 +10,7 @@ import {
   type ViewProps,
 } from "react-native";
 import { useState, type ReactNode } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const COLORS = {
   primary: "#2563eb",
@@ -27,18 +29,46 @@ export const COLORS = {
 export function Screen({
   children,
   style,
+  scrollable = true,
 }: {
   children: ReactNode;
   style?: ViewProps["style"];
+  scrollable?: boolean;
 }) {
-  return (
+  const insets = useSafeAreaInsets();
+  const content = (
     <View
       style={[
-        { flex: 1, backgroundColor: COLORS.slate50, padding: 16 },
+        {
+          flex: 1,
+          paddingTop: Math.max(insets.top, 16),
+          paddingBottom: Math.max(insets.bottom, 16),
+          paddingLeft: Math.max(insets.left, 16),
+          paddingRight: Math.max(insets.right, 16),
+        },
         style,
       ]}
     >
       {children}
+    </View>
+  );
+
+  if (scrollable) {
+    return (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: COLORS.slate50 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {content}
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: COLORS.slate50 }}>
+      {content}
     </View>
   );
 }

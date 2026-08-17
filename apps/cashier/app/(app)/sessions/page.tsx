@@ -41,6 +41,27 @@ export default function SessionsPage() {
     };
   }, []);
 
+  // Identificación del país de la ventanilla autenticada
+  const isPeruUser =
+    user?.officeId === "office-pe" ||
+    user?.office?.country?.code === "PE" ||
+    user?.office?.name?.includes("Perú") ||
+    user?.email?.includes(".pe");
+
+  // Filtrar EXCLUSIVAMENTE la caja asignada a la sede del cajero autenticado (Seguridad y Privacidad por Sede)
+  const myAccounts = accounts.filter((a) => {
+    const isPeAccount = a.code.includes("PE") || a.currency === "PEN";
+    return isPeruUser ? isPeAccount : !isPeAccount;
+  });
+
+  const displayedAccounts = myAccounts.length > 0 ? myAccounts : accounts;
+  const currentAccount = displayedAccounts[0];
+
+  // La sesión activa se filtra ESTRICTAMENTE por la caja asignada a esta ventanilla
+  const activeSession = sessions.find(
+    (s) => s.cashAccountId === currentAccount?.id && s.status === "OPEN"
+  );
+
   const closeSession = async (id: string, actualBalance: number) => {
     setError(null);
     setSuccess(null);
@@ -50,10 +71,11 @@ export default function SessionsPage() {
         actualBalance,
       });
       const diff = Number(s.discrepancy);
+      const curr = currentAccount?.currency ?? "USD";
       setSuccess(
         diff === 0
-          ? `Cierre OK. Contado ${fmtMoney(actualBalance, s.cashAccount?.currency ?? "USD")}.`
-          : `Cierre con diferencia de ${fmtMoney(diff, s.cashAccount?.currency ?? "USD")}. Se registró la discrepancia.`,
+          ? `Cierre OK. Contado ${fmtMoney(actualBalance, curr)}.`
+          : `Cierre con diferencia de ${fmtMoney(diff, curr)}. Se registró la discrepancia.`,
       );
       await refreshSessions();
       await refreshAccounts();
@@ -64,92 +86,98 @@ export default function SessionsPage() {
     }
   };
 
-  // Orden dinámico de tarjetas: Si el usuario es de Perú, MAIN-PE-01 va PRIMERO. Si es de Ecuador, MAIN-EC-01 va PRIMERO.
-  const isPeruUser =
-    user?.officeId === "office-pe" ||
-    user?.office?.country?.code === "PE" ||
-    user?.office?.name?.includes("Perú") ||
-    user?.email?.includes(".pe");
-
-  const sortedAccounts = [...accounts].sort((a, b) => {
-    const aIsPe = a.code.includes("PE") || a.currency === "PEN";
-    const bIsPe = b.code.includes("PE") || b.currency === "PEN";
-    if (isPeruUser) {
-      if (aIsPe && !bIsPe) return -1;
-      if (!aIsPe && bIsPe) return 1;
-    } else {
-      if (!aIsPe && bIsPe) return -1;
-      if (aIsPe && !bIsPe) return 1;
-    }
-    return 0;
-  });
-
-  const activeSession = sessions.find((s) => s.status === "OPEN");
+  const agencyLabel = isPeruUser ? "Perú" : "Ecuador";
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-xl font-bold text-slate-900">Caja y sesiones</h1>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">
+            Caja y Sesión de Turno — Sede {agencyLabel}
+          </h1>
+          <p className="text-xs text-slate-500">
+            Gestión y control de efectivo exclusivo para la caja asignada a la sede {agencyLabel}.
+          </p>
+        </div>
+      </div>
 
       {error && <Alert>{error}</Alert>}
       {success && <Alert kind="success">{success}</Alert>}
 
-      {/* Tarjetas de Cajas ordenadas según el país del cajero logueado */}
-      <div className="grid grid-cols-2 gap-4">
-        {sortedAccounts.map((a) => {
+      {/* Tarjeta Exclusiva de la Caja de esta Ventanilla */}
+      <div className="grid grid-cols-1 gap-4">
+        {displayedAccounts.map((a) => {
           const open = sessions.find(
-            (s) => s.cashAccountId === a.id && s.status === "OPEN",
+            (s) => s.cashAccountId === a.id && s.status === "OPEN"
           );
+          const country = a.currency === "USD" ? "Ecuador" : "Perú";
+
           return (
-            <Card key={a.id} title={a.code}>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Saldo</span>
-                  <span className="font-semibold text-slate-800">
+            <div
+              key={a.id}
+              className="rounded-xl p-5 bg-white border-2 border-blue-600 shadow-sm space-y-3"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🏦</span>
+                  <span className="font-extrabold text-slate-900 text-base">
+                    Caja {a.code} — Agencia {country}
+                  </span>
+                </div>
+                <Badge className="bg-blue-100 text-blue-800 font-bold px-3 py-1">
+                  Caja Asignada
+                </Badge>
+              </div>
+              <div className="grid grid-cols-3 gap-4 pt-1 text-sm">
+                <div>
+                  <span className="text-slate-500 text-xs block">Saldo Actual en Caja</span>
+                  <span className="font-black text-slate-900 text-lg">
                     {fmtMoney(a.balance, a.currency)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Sesión</span>
+                <div>
+                  <span className="text-slate-500 text-xs block">Estado de Turno</span>
                   {open ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 font-bold">
-                      Abierta
+                    <Badge className="bg-emerald-100 text-emerald-800 font-extrabold mt-1">
+                      🟢 Sesión Abierta
                     </Badge>
                   ) : (
-                    <Badge className="bg-slate-200 text-slate-600">
-                      Cerrada
+                    <Badge className="bg-slate-200 text-slate-600 font-bold mt-1">
+                      🔴 Sesión Cerrada
                     </Badge>
                   )}
                 </div>
-                {open && (
-                  <div className="text-xs text-slate-500 font-medium">
-                    Apertura {fmtMoney(open.openingBalance, a.currency)} ·{" "}
-                    {fmtDate(open.openedAt)}
-                  </div>
-                )}
+                <div>
+                  <span className="text-slate-500 text-xs block">Fondo de Apertura</span>
+                  <span className="font-bold text-emerald-700 text-sm block mt-1">
+                    {open ? fmtMoney(open.openingBalance, a.currency) : "—"}
+                  </span>
+                </div>
               </div>
-            </Card>
+            </div>
           );
         })}
       </div>
 
+      {/* Detalle de Sesión Exclusiva para esta Caja */}
       {!activeSession ? (
-        <Card title="🔐 ESTADO DE CAJA: APERTURA EXCLUSIVA POR ADMINISTRACIÓN">
+        <Card title={`🔐 ESTADO DE CAJA ${currentAccount?.code ?? ""} (${agencyLabel}): APERTURA PENDIENTE`}>
           <div className="p-6 text-center space-y-3">
             <div className="text-4xl">🔒</div>
             <h3 className="text-base font-bold text-slate-800">
-              La caja aún no ha sido aperturada por el Administrador.
+              La caja de {agencyLabel} ({currentAccount?.code ?? ""}) aún no ha sido aperturada por el Administrador.
             </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              De acuerdo con los controles de seguridad del sistema, la apertura de turno y asignación del saldo inicial en efectivo se realiza únicamente desde la <strong>Consola de Administración</strong>.
+              De acuerdo con las políticas de seguridad del sistema, el saldo de apertura es asignado únicamente desde la <strong>Consola de Administración</strong>.
             </p>
             <div className="inline-block bg-amber-50 border border-amber-200 text-amber-900 text-xs px-4 py-2 rounded-lg font-semibold">
-              ℹ️ Solicite a su Administrador realizar la apertura en la sección "Cajas" del Panel Admin.
+              ℹ️ Solicite a su Administrador habilitar el turno de la caja de {agencyLabel} en el Panel Admin.
             </div>
           </div>
         </Card>
       ) : (
         <Card
-          title="🌆 CIERRE DE CAJA (Arqueo y Cuadre Final de Turno)"
+          title={`🌆 CIERRE Y ARQUEO DE CAJA — ${currentAccount?.code ?? ""} (${agencyLabel})`}
           action={
             <Badge className="bg-emerald-100 text-emerald-800 font-bold">
               En curso desde {fmtDate(activeSession.openedAt)}
@@ -160,39 +188,40 @@ export default function SessionsPage() {
             {/* Destacado del Monto de Apertura */}
             <div className="bg-slate-900 text-white rounded-xl p-4 shadow border-l-4 border-amber-400 space-y-1">
               <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                <span>💵</span> MONTO DE APERTURA REGISTRADO PARA EL TURNO:
+                <span>💵</span> MONTO DE APERTURA ASIGNADO A ESTA CAJA:
               </div>
-              <div className="text-2xl font-black text-emerald-400">
+              <div className="text-3xl font-black text-emerald-400">
                 {fmtMoney(
                   activeSession.openingBalance,
-                  activeSession.cashAccount?.currency ?? "USD",
+                  currentAccount?.currency ?? "USD"
                 )}
               </div>
               <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-800">
-                Apertura autorizada el {fmtDate(activeSession.openedAt)}
+                Apertura registrada el {fmtDate(activeSession.openedAt)} por {activeSession.openedBy?.fullName ?? "Administración"}
               </div>
             </div>
 
             <div className="rounded-lg bg-slate-50 p-4 border border-slate-200 text-sm space-y-2">
               <div className="flex justify-between border-t border-slate-200 pt-1">
                 <span className="text-slate-800 font-bold">
-                  Saldo Esperado según el Sistema:
+                  Saldo Esperado según Sistema:
                 </span>
                 <span className="font-extrabold text-blue-700 text-base">
                   {fmtMoney(
                     activeSession.expectedBalance ?? activeSession.openingBalance,
-                    activeSession.cashAccount?.currency ?? "USD",
+                    currentAccount?.currency ?? "USD"
                   )}
                 </span>
               </div>
             </div>
 
             <p className="text-xs text-slate-500">
-              Al finalizar el turno, la cajera debe contar todo el efectivo físico en billetes y monedas e ingresar el total para realizar el arqueo final.
+              Al finalizar la jornada, cuente el efectivo físico disponible en la caja de {agencyLabel} e ingrese el total para realizar el arqueo final.
             </p>
 
             <CloseButton
               session={activeSession}
+              currency={currentAccount?.currency ?? "USD"}
               onClose={closeSession}
               working={working}
             />
@@ -200,10 +229,11 @@ export default function SessionsPage() {
         </Card>
       )}
 
-      <Card title="Historial de sesiones">
-        {sessions.length === 0 ? (
+      {/* Historial Exclusivo de la Caja Propia */}
+      <Card title={`📜 Historial Exclusivo de Sesiones — Caja ${currentAccount?.code ?? ""} (${agencyLabel})`}>
+        {sessions.filter((s) => s.cashAccountId === currentAccount?.id).length === 0 ? (
           <div className="py-6 text-center text-sm text-slate-400">
-            Sin sesiones registradas.
+            Sin sesiones registradas para la caja de {agencyLabel}.
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -219,44 +249,46 @@ export default function SessionsPage() {
               </tr>
             </thead>
             <tbody>
-              {sessions.map((s) => {
-                const curr = s.cashAccount?.currency ?? "USD";
-                return (
-                  <tr key={s.id} className="border-b border-slate-50">
-                    <td className="py-2">
-                      <Badge
-                        className={
-                          s.status === "OPEN"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-slate-200 text-slate-600"
-                        }
-                      >
-                        {s.status === "OPEN" ? "Abierta" : "Cerrada"}
-                      </Badge>
-                    </td>
-                    <td className="py-2 text-xs">{fmtDate(s.openedAt)}</td>
-                    <td className="py-2 font-bold text-slate-900">
-                      {fmtMoney(s.openingBalance, curr)}
-                    </td>
-                    <td className="py-2">
-                      {fmtMoney(s.expectedBalance ?? s.openingBalance, curr)}
-                    </td>
-                    <td className="py-2">
-                      {s.actualBalance != null
-                        ? fmtMoney(s.actualBalance, curr)
-                        : "—"}
-                    </td>
-                    <td className="py-2">
-                      {s.discrepancy != null
-                        ? fmtMoney(s.discrepancy, curr)
-                        : "—"}
-                    </td>
-                    <td className="py-2 text-xs">
-                      {s.closedAt ? fmtDate(s.closedAt) : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
+              {sessions
+                .filter((s) => s.cashAccountId === currentAccount?.id)
+                .map((s) => {
+                  const curr = currentAccount?.currency ?? "USD";
+                  return (
+                    <tr key={s.id} className="border-b border-slate-50">
+                      <td className="py-2">
+                        <Badge
+                          className={
+                            s.status === "OPEN"
+                              ? "bg-emerald-100 text-emerald-800 font-bold"
+                              : "bg-slate-200 text-slate-600"
+                          }
+                        >
+                          {s.status === "OPEN" ? "Abierta" : "Cerrada"}
+                        </Badge>
+                      </td>
+                      <td className="py-2 text-xs">{fmtDate(s.openedAt)}</td>
+                      <td className="py-2 font-bold text-emerald-700">
+                        {fmtMoney(s.openingBalance, curr)}
+                      </td>
+                      <td className="py-2 font-semibold">
+                        {fmtMoney(s.expectedBalance ?? s.openingBalance, curr)}
+                      </td>
+                      <td className="py-2">
+                        {s.actualBalance != null
+                          ? fmtMoney(s.actualBalance, curr)
+                          : "—"}
+                      </td>
+                      <td className="py-2 font-bold">
+                        {s.discrepancy != null
+                          ? fmtMoney(s.discrepancy, curr)
+                          : "—"}
+                      </td>
+                      <td className="py-2 text-xs">
+                        {s.closedAt ? fmtDate(s.closedAt) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         )}
@@ -267,10 +299,12 @@ export default function SessionsPage() {
 
 function CloseButton({
   session,
+  currency,
   onClose,
   working,
 }: {
   session: CashSession;
+  currency: string;
   onClose: (id: string, amount: number) => void;
   working: boolean;
 }) {
@@ -278,12 +312,11 @@ function CloseButton({
   const expected = Number(session.expectedBalance || session.openingBalance || 0);
   const counted = amount !== "" ? Number(amount) : null;
   const diff = counted != null ? counted - expected : null;
-  const curr = session.cashAccount?.currency ?? "USD";
 
   return (
     <div className="space-y-3">
       <Input
-        label="Monto contado al arqueo (Efectivo físico en caja)"
+        label={`Monto contado al arqueo (Efectivo físico en caja ${currency})`}
         type="number"
         min="0"
         step="0.01"
@@ -301,7 +334,7 @@ function CloseButton({
         >
           {Math.abs(diff) < 0.01
             ? "✅ Arqueo perfecto: Sin diferencia entre dinero físico y sistema."
-            : `⚠️ Diferencia detectada: ${diff > 0 ? "+" : ""}${diff.toFixed(2)} ${curr} (${diff > 0 ? "Sobrante" : "Faltante"})`}
+            : `⚠️ Diferencia detectada: ${diff > 0 ? "+" : ""}${diff.toFixed(2)} ${currency} (${diff > 0 ? "Sobrante" : "Faltante"})`}
         </div>
       )}
       <Button
