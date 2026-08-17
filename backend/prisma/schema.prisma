@@ -1,0 +1,640 @@
+// Divisas — PostgreSQL schema (dominio completo)
+// Base: PROJECT_MASTER_SPEC_v1.md §19
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ ENUMS ============
+
+enum Role {
+  CUSTOMER
+  CASHIER
+  SUPERVISOR
+  COMPLIANCE
+  TREASURY
+  ADMIN
+  AUDITOR
+}
+
+enum CorridorDirection {
+  EC_TO_PE // USD -> PEN
+  PE_TO_EC // PEN -> USD
+}
+
+enum CustomerType {
+  PERSON
+  BUSINESS
+}
+
+enum DocumentType {
+  CEDULA
+  DNI
+  PASSPORT
+  RUC
+}
+
+enum TransferStatus {
+  DRAFT
+  QUOTED
+  CONFIRMED
+  AWAITING_PAYMENT
+  PAYMENT_RECEIVED
+  RECONCILIATION
+  RISK_CHECK
+  APPROVED
+  SETTLEMENT_PENDING
+  PAYOUT_PROCESSING
+  PAID
+  COMPLETED
+
+  // Excepcionales
+  QUOTE_EXPIRED
+  PAYMENT_MISMATCH
+  PAYMENT_EXPIRED
+  MANUAL_REVIEW
+  AML_REVIEW
+  RISK_BLOCKED
+  PAYOUT_FAILED
+  PAYOUT_REJECTED
+  CANCELLED
+  REFUND_PENDING
+  REFUNDED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+}
+
+enum PayoutMethod {
+  BANK
+  CASH
+  MOBILE_WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  RECEIVED
+  MATCHED
+  MISMATCH
+  MANUAL_REVIEW
+  EXPIRED
+  CANCELLED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REJECTED
+  CANCELLED
+}
+
+enum CashMovementType {
+  OPENING
+  CASH_IN
+  CASH_OUT
+  ADJUSTMENT
+  CLOSING
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+  PENDING_REVIEW
+}
+
+enum LedgerAccountType {
+  ASSET
+  LIABILITY
+  INCOME
+  EXPENSE
+  EQUITY
+}
+
+enum LedgerEntrySide {
+  DEBIT
+  CREDIT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  STATUS_CHANGE
+  APPROVE
+  REJECT
+  BLOCK
+  DELETE
+  LOGIN
+  LOGOUT
+  CASH_OPEN
+  CASH_CLOSE
+  CASH_IN
+  CASH_OUT
+  PAYMENT_MATCH
+  PAYOUT
+}
+
+// ============ MAESTROS ============
+
+model Country {
+  id            String       @id @default(uuid())
+  code          String       @unique // EC, PE
+  name          String
+  currency      String // USD, PEN
+  createdAt     DateTime     @default(now())
+
+  offices       Office[]
+  corridorsFrom Corridor[]   @relation("FromCountry")
+  corridorsTo   Corridor[]   @relation("ToCountry")
+  customers     Customer[]
+  beneficiaries Beneficiary[]
+  bankAccounts  BankAccount[]
+}
+
+model Currency {
+  id        String   @id @default(uuid())
+  code      String   @unique // USD, PEN
+  name      String
+  decimals  Int      @default(2)
+  createdAt DateTime @default(now())
+}
+
+model Corridor {
+  id           String             @id @default(uuid())
+  fromCountryId String
+  toCountryId   String
+  fromCurrency  String
+  toCurrency    String
+  direction    CorridorDirection  @unique
+  active       Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+
+  fromCountry Country  @relation("FromCountry", fields: [fromCountryId], references: [id])
+  toCountry   Country  @relation("ToCountry", fields: [toCountryId], references: [id])
+
+  fxRates   FxRate[]
+  quotes    Quote[]
+  transfers Transfer[]
+
+  @@unique([fromCountryId, toCountryId])
+}
+
+model Office {
+  id        String   @id @default(uuid())
+  name      String
+  countryId String
+  address   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  country      Country       @relation(fields: [countryId], references: [id])
+  cashAccounts CashAccount[]
+  users        User[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         Role     @default(CUSTOMER)
+  phone        String?
+  active       Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  officeId      String?
+  office        Office?           @relation(fields: [officeId], references: [id])
+  customer      Customer?
+  auditLogs     AuditLog[]
+  cashSessionsOpened CashSession[] @relation("SessionOpenedBy")
+  cashSessionsClosed CashSession[] @relation("SessionClosedBy")
+  cashMovements CashMovement[]
+}
+
+// ============ CLIENTES ============
+
+model Customer {
+  id               String       @id @default(uuid())
+  userId           String?      @unique
+  type             CustomerType
+  fullName         String
+  documentType     DocumentType
+  documentNumber   String
+  countryId        String
+  email            String?
+  phone            String?
+  economicActivity String? // Empleado, Comerciante, Independiente, Jubilado, etc.
+  kycStatus        String       @default("PENDING") // PENDING | IN_REVIEW | APPROVED | REJECTED
+  riskScore        Int          @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  user         User?          @relation(fields: [userId], references: [id])
+  country      Country        @relation(fields: [countryId], references: [id])
+  beneficiaries Beneficiary[]
+  transfers    Transfer[]     @relation("Sender")
+  documents    Document[]
+  riskAlerts   RiskAlert[]
+  amlCases     AmlCase[]
+
+  @@unique([documentType, documentNumber])
+}
+
+model Document {
+  id         String   @id @default(uuid())
+  customerId String
+  type       String // ID_FRONT, ID_BACK, RUC, PROOF_OF_ADDRESS, etc.
+  fileUrl    String
+  status     String   @default("PENDING")
+  uploadedAt DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+model Beneficiary {
+  id             String   @id @default(uuid())
+  customerId     String
+  fullName       String
+  documentType   DocumentType
+  documentNumber String
+  countryId      String
+  phone          String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  customer  Customer            @relation(fields: [customerId], references: [id])
+  country   Country             @relation(fields: [countryId], references: [id])
+  accounts  BeneficiaryAccount[]
+  transfers Transfer[]          @relation("PayoutBeneficiary")
+}
+
+model BeneficiaryAccount {
+  id            String   @id @default(uuid())
+  beneficiaryId String
+  bankName      String
+  accountNumber String
+  accountType   String? // savings | checking
+  currency      String   @default("PEN")
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id])
+  transfers   Transfer[]  @relation("PayoutAccount")
+}
+
+// ============ FX / COTIZACIÓN ============
+
+model FxRate {
+  id               String    @id @default(uuid())
+  corridorId       String
+  marketRate       Decimal   @db.Decimal(18, 8)
+  sellRate         Decimal   @db.Decimal(18, 8) // tasa aplicada al cliente
+  spreadBps        Int // spread en puntos básicos
+  isManualOverride Boolean   @default(false)
+  manualRate       Decimal?  @db.Decimal(18, 8)
+  sourceApi        String?   @default("SYSTEM_DEFAULT")
+  lastFetchAt      DateTime?
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+
+  corridor Corridor @relation(fields: [corridorId], references: [id])
+  quotes   Quote[]
+}
+
+model Quote {
+  id             String   @id @default(uuid())
+  corridorId     String
+  fxRateId       String
+  sendAmount     Decimal  @db.Decimal(18, 2)
+  sendCurrency   String
+  feeAmount      Decimal  @db.Decimal(18, 2)
+  feeCurrency    String
+  fxRate         Decimal  @db.Decimal(18, 8)
+  receiveAmount  Decimal  @db.Decimal(18, 2)
+  receiveCurrency String
+  expiresAt      DateTime
+  status         String   @default("ACTIVE") // ACTIVE | EXPIRED | USED | CANCELLED
+  createdAt      DateTime @default(now())
+
+  corridor Corridor @relation(fields: [corridorId], references: [id])
+  fxRateRef FxRate  @relation(fields: [fxRateId], references: [id])
+  transfer Transfer?
+}
+
+// ============ TRANSFERENCIAS ============
+
+model Transfer {
+  id                 String         @id @default(uuid())
+  reference          String         @unique // TRX-XXXXXXXX
+  status             TransferStatus @default(DRAFT)
+  corridorId         String
+  senderId           String
+  beneficiaryId      String
+  payoutMethod       PayoutMethod
+  paymentMethod      PaymentMethod
+  quoteId            String?        @unique
+  sendAmount         Decimal        @db.Decimal(18, 2)
+  sendCurrency       String
+  feeAmount          Decimal        @db.Decimal(18, 2)
+  feeCurrency        String
+  fxRate             Decimal        @db.Decimal(18, 8)
+  receiveAmount      Decimal        @db.Decimal(18, 2)
+  receiveCurrency    String
+  remittanceReason   String? // Ayuda Familiar, Gastos Médicos, Pago Proveedor Comercial, Educación, etc.
+  payoutAccountId    String? // cuenta bancaria beneficiario si payout = BANK
+  withdrawalCode     String? // código de retiro si payout = CASH
+  withdrawalExpiresAt DateTime?
+  withdrawalAttempts Int            @default(0)
+  withdrawalUsed     Boolean        @default(false)
+  riskScore          Int            @default(0)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  corridor        Corridor          @relation(fields: [corridorId], references: [id])
+  sender          Customer          @relation("Sender", fields: [senderId], references: [id])
+  beneficiary     Beneficiary       @relation("PayoutBeneficiary", fields: [beneficiaryId], references: [id])
+  quote           Quote?            @relation(fields: [quoteId], references: [id])
+  payoutAccount   BeneficiaryAccount? @relation("PayoutAccount", fields: [payoutAccountId], references: [id])
+  events          TransferEvent[]
+  payments        Payment[]
+  payouts         Payout[]
+  settlements     Settlement[]
+  riskAssessments RiskAssessment[]
+  ledgerEntries   LedgerEntry[]
+}
+
+model TransferEvent {
+  id         String          @id @default(uuid())
+  transferId String
+  fromStatus TransferStatus?
+  toStatus   TransferStatus
+  actorId    String
+  note       String?
+  createdAt  DateTime        @default(now())
+
+  transfer Transfer @relation(fields: [transferId], references: [id])
+}
+
+// ============ PAGOS ============
+
+model Payment {
+  id                  String        @id @default(uuid())
+  transferId          String
+  method              PaymentMethod
+  status              PaymentStatus @default(PENDING)
+  amount              Decimal       @db.Decimal(18, 2)
+  currency            String
+  bankName            String?
+  accountNumber       String?
+  transactionRef      String?
+  cashMovementId      String?       @unique
+  receivedById        String?
+  receivedAt          DateTime?
+  referenceCode       String? // código de referencia para verificación
+  proofFileUrl        String? // URL/b64 del comprobante de transferencia subido por el cliente
+  customerDeclaredRef String? // código TRX-XXXXXX declarado por el cliente
+  sourceOfFunds       String? // Sueldo/Honorarios, Ahorros, Venta de Inmueble, Préstamo, etc.
+  highBillSerials     String? // Números de serie de billetes de alta denominación recibidos
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  transfer     Transfer      @relation(fields: [transferId], references: [id])
+  cashMovement CashMovement? @relation("PaymentCashMovement", fields: [cashMovementId], references: [id])
+  matches      PaymentMatch[]
+}
+
+model PaymentMatch {
+  id        String   @id @default(uuid())
+  paymentId String
+  matched   Boolean  @default(true)
+  matchType String // MANUAL | BANK_STATEMENT | CASH
+  detail    String?
+  createdAt DateTime @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+}
+
+// ============ PAYOUT ============
+
+model Payout {
+  id             String       @id @default(uuid())
+  transferId     String
+  method         PayoutMethod
+  status         PayoutStatus @default(PENDING)
+  amount         Decimal      @db.Decimal(18, 2)
+  currency       String
+  bankName       String?
+  accountNumber  String?
+  bankRef        String?
+  cashMovementId String?      @unique
+  processedById  String?
+  processedAt    DateTime?
+  pickupAt       DateTime?
+  note           String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  transfer     Transfer     @relation(fields: [transferId], references: [id])
+  cashMovement CashMovement? @relation("PayoutCashMovement", fields: [cashMovementId], references: [id])
+}
+
+model Settlement {
+  id          String    @id @default(uuid())
+  transferId  String
+  status      String    @default("PENDING") // PENDING | COMPLETED | FAILED
+  method      String    @default("TREASURY")
+  amount      Decimal   @db.Decimal(18, 2)
+  currency    String
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  transfer Transfer @relation(fields: [transferId], references: [id])
+}
+
+// ============ LEDGER (double-entry) ============
+
+model LedgerAccount {
+  id      String           @id @default(uuid())
+  code    String           @unique
+  name    String
+  type    LedgerAccountType
+  currency String
+  balance Decimal          @default(0) @db.Decimal(18, 2)
+
+  entries LedgerEntry[]
+
+  @@index([code])
+}
+
+model LedgerEntry {
+  id          String           @id @default(uuid())
+  accountId   String
+  transferId  String?
+  entryGroup  String // identificador del asiento (p. ej. TRX-xxx-CASHIN)
+  side        LedgerEntrySide
+  amount      Decimal          @db.Decimal(18, 2)
+  currency    String
+  description String
+  createdAt   DateTime         @default(now())
+
+  account  LedgerAccount @relation(fields: [accountId], references: [id])
+  transfer Transfer?     @relation(fields: [transferId], references: [id])
+
+  @@index([accountId])
+  @@index([entryGroup])
+}
+
+// ============ BANCOS / CAJA ============
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  bankName      String
+  bankCode      String? // PICHINCHA | GUAYAQUIL | BCP
+  accountType   String? // SAVINGS | CHECKING
+  cci           String? // Código de Cuenta Interbancario para Perú
+  countryId     String
+  accountName   String
+  accountNumber String   @unique
+  currency      String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  country      Country          @relation(fields: [countryId], references: [id])
+  transactions BankTransaction[]
+}
+
+model BankTransaction {
+  id            String   @id @default(uuid())
+  bankAccountId String
+  externalRef   String?
+  amount        Decimal  @db.Decimal(18, 2)
+  currency      String
+  description   String?
+  postedAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id])
+}
+
+model CashAccount {
+  id                     String   @id @default(uuid())
+  code                   String   @unique // MAIN-EC-01
+  officeId               String
+  currency               String
+  balance                Decimal  @default(0) @db.Decimal(18, 2)
+  maxBalance             Decimal? @db.Decimal(18, 2) // Límite de seguridad de saldo máximo en caja
+  requiresSupervisorAbove Decimal? @db.Decimal(18, 2) // Monto a partir del cual se exige PIN/Rol de supervisor
+  active                 Boolean  @default(true)
+  createdAt              DateTime @default(now())
+
+  office    Office         @relation(fields: [officeId], references: [id])
+  movements CashMovement[]
+  sessions  CashSession[]
+}
+
+model CashMovement {
+  id            String           @id @default(uuid())
+  cashAccountId String
+  cashSessionId String?
+  type          CashMovementType
+  amount        Decimal          @db.Decimal(18, 2)
+  currency      String
+  description   String?
+  performedById String?
+  transferId    String?
+  createdAt     DateTime         @default(now())
+
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
+  cashSession CashSession? @relation(fields: [cashSessionId], references: [id])
+  performedBy User?        @relation(fields: [performedById], references: [id])
+  payment     Payment?     @relation("PaymentCashMovement")
+  payout      Payout?      @relation("PayoutCashMovement")
+}
+
+model CashSession {
+  id              String           @id @default(uuid())
+  cashAccountId   String
+  openedById      String
+  openedAt        DateTime         @default(now())
+  openingBalance  Decimal          @db.Decimal(18, 2)
+  expectedBalance Decimal?         @db.Decimal(18, 2)
+  actualBalance   Decimal?         @db.Decimal(18, 2)
+  discrepancy     Decimal?         @db.Decimal(18, 2)
+  status          CashSessionStatus @default(OPEN)
+  closedById      String?
+  closedAt        DateTime?
+  note            String?
+  createdAt       DateTime         @default(now())
+
+  cashAccount CashAccount   @relation(fields: [cashAccountId], references: [id])
+  openedBy    User          @relation("SessionOpenedBy", fields: [openedById], references: [id])
+  closedBy    User?         @relation("SessionClosedBy", fields: [closedById], references: [id])
+  movements   CashMovement[]
+}
+
+// ============ RISK / AML ============
+
+model RiskAssessment {
+  id         String   @id @default(uuid())
+  transferId String
+  score      Int      @default(0)
+  level      String   @default("LOW") // LOW | MEDIUM | HIGH
+  reasons    Json?
+  createdAt  DateTime @default(now())
+
+  transfer Transfer @relation(fields: [transferId], references: [id])
+}
+
+model RiskAlert {
+  id         String   @id @default(uuid())
+  customerId String
+  type       String // UNUSUAL_PATTERN | NEW_BENEFICIARY | HIGH_AMOUNT | THIRD_PARTY_PAYMENT | ETC
+  severity   String   @default("LOW")
+  detail     String?
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+model AmlCase {
+  id         String   @id @default(uuid())
+  customerId String
+  status     String   @default("OPEN") // OPEN | MANUAL_REVIEW | CLOSED | BLOCKED
+  riskLevel  String   @default("MEDIUM")
+  summary    String?
+  assignedTo String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+// ============ AUDITORÍA ============
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  actorId   String
+  action    AuditAction
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime    @default(now())
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([actorId])
+}
