@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Divisas",
+    "name": "Divisas - Cliente Móvil",
     "slug": "divisas",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.divisas.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -41,8 +42,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ],
-      "expo-build-properties"
+      ]
     ],
     "experiments": {
       "typedRoutes": false,
