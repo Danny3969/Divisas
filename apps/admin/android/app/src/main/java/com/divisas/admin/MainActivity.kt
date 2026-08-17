@@ -24,6 +24,8 @@ class MainActivity : AppCompatActivity() {
         settings.databaseEnabled = true
         settings.allowFileAccess = true
         settings.allowContentAccess = true
+        settings.allowFileAccessFromFileURLs = true
+        settings.allowUniversalAccessFromFileURLs = true
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
@@ -37,10 +39,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Cargar Consola de Administración (Localhost / Servidor)
-        // Usa 10.0.2.2 si se corre en un emulador o la IP local de tu servidor
-        val adminUrl = "http://10.0.2.2:3002"
-        webView.loadUrl(adminUrl)
+        // Cargar la aplicación embebida 100% nativa local desde los assets de la APK
+        val localAssetUrl = "file:///android_asset/admin_web/index.html"
+        webView.loadUrl(localAssetUrl)
     }
 
     override fun onBackPressed() {
