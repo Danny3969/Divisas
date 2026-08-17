@@ -127,9 +127,21 @@ export default function OperationDetailScreen() {
             <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.slate900, letterSpacing: 2 }}>
               {transfer.withdrawalCode}
             </Text>
-            <Text style={{ color: COLORS.slate600, fontSize: 12, marginTop: 4 }}>
-              El beneficiario debe presentar documento y este código en la oficina para retirar.
+            <Text style={{ color: COLORS.slate600, fontSize: 12, marginTop: 4, marginBottom: 10 }}>
+              El beneficiario debe presentar documento y este código en la oficina para retirar. Vigencia: 30 días.
             </Text>
+            <Button
+              title="📲 Enviar Notificación por WhatsApp"
+              onPress={async () => {
+                try {
+                  const res = await get<{ link: string }>(`/transfers/${transfer.id}/whatsapp-link`);
+                  const Linking = require("react-native").Linking;
+                  Linking.openURL(res.link);
+                } catch {
+                  /* fallback */
+                }
+              }}
+            />
           </Card>
         )}
 

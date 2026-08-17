@@ -37,9 +37,12 @@ export class PayoutsService {
       },
     });
     if (!transfer) throw new NotFoundException('Código de retiro inválido');
+    if (transfer.status === TransferStatus.RISK_BLOCKED) {
+      throw new BadRequestException('La operación se encuentra BLOQUEADA por 3 intentos fallidos. El Administrador debe regenerar el código.');
+    }
     if (transfer.withdrawalUsed) throw new BadRequestException('El código de retiro ya fue utilizado');
     if (transfer.withdrawalExpiresAt && new Date(transfer.withdrawalExpiresAt) < new Date()) {
-      throw new BadRequestException('El código de retiro expiró');
+      throw new BadRequestException('El código de retiro ha caducado tras 30 días de vigencia');
     }
     if (transfer.status !== TransferStatus.SETTLEMENT_PENDING && transfer.status !== TransferStatus.PAYOUT_PROCESSING) {
       throw new BadRequestException(`La transferencia no está lista para retiro (${transfer.status})`);
@@ -61,19 +64,43 @@ export class PayoutsService {
 
     // Verificación del documento del beneficiario (identidad en ventanilla)
     if (transfer.beneficiary.documentNumber !== dto.beneficiaryDocument) {
-      // Incrementa intentos y registra auditoría
+      const nextAttempts = transfer.withdrawalAttempts + 1;
+      const isBlocked = nextAttempts >= 3;
+
       await this.prisma.transfer.update({
         where: { id: transfer.id },
-        data: { withdrawalAttempts: { increment: 1 } },
+        data: {
+          withdrawalAttempts: nextAttempts,
+          status: isBlocked ? TransferStatus.RISK_BLOCKED : transfer.status,
+        },
       });
+
+      await this.prisma.transferEvent.create({
+        data: {
+          transferId: transfer.id,
+          fromStatus: transfer.status,
+          toStatus: isBlocked ? TransferStatus.RISK_BLOCKED : transfer.status,
+          actorId: actor.userId,
+          note: isBlocked
+            ? `BLOQUEO DE SEGURIDAD: 3 intentos fallidos de retiro con documento ${dto.beneficiaryDocument}`
+            : `Intento fallido de retiro (${nextAttempts}/3) con documento ${dto.beneficiaryDocument}`,
+        },
+      });
+
       await this.audit.record({
         actor,
         action: AuditAction.BLOCK,
         entity: 'Transfer',
         entityId: transfer.id,
-        after: { reason: 'DOCUMENT_MISMATCH' },
+        after: { reason: 'DOCUMENT_MISMATCH', attempts: nextAttempts, isBlocked },
       });
-      throw new BadRequestException('El documento no coincide con el beneficiario');
+
+      if (isBlocked) {
+        throw new BadRequestException(
+          'Operación BLOQUEADA por seguridad tras 3 intentos fallidos de documento. El Administrador ha sido notificado para investigar y regenerar el código.',
+        );
+      }
+      throw new BadRequestException(`El documento no coincide con el beneficiario. Intento ${nextAttempts}/3`);
     }
 
     const cashAccount = await this.prisma.cashAccount.findUnique({

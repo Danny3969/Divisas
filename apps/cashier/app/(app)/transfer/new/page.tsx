@@ -469,28 +469,45 @@ export default function NewTransferPage() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() =>
-                  alert(
-                    `🖨️ IMPRIMIENDO TICKET DE REMESA DE VENTANILLA:\n----------------------------------------\nDIVISAS REMESAS INT.\nCÓDIGO RETIRO: ${createdTransfer.withdrawalCode}\nREF: ${createdTransfer.reference}\nREMITENTE: ${createdTransfer.sender.fullName}\nBENEFICIARIO: ${createdTransfer.beneficiary.fullName}\nMONTO NETO A RETIRAR: ${createdTransfer.receiveAmount} ${createdTransfer.receiveCurrency}\n----------------------------------------`
-                  )
-                }
-              >
-                🖨️ Imprimir Ticket Ventanilla
-              </Button>
+            <div className="flex flex-col gap-2 pt-2">
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  className="flex-1 border-emerald-600 text-emerald-700 hover:bg-emerald-50 font-bold"
+                  onClick={async () => {
+                    try {
+                      const res = await get<{ link: string }>(`/transfers/${createdTransfer.id}/whatsapp-link`);
+                      window.open(res.link, "_blank");
+                    } catch {
+                      alert(`WhatsApp: Hola ${createdTransfer.beneficiary.fullName}, ${createdTransfer.sender.fullName} te envió un giro con código ${createdTransfer.withdrawalCode}`);
+                    }
+                  }}
+                >
+                  📲 Enviar Notificación por WhatsApp
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() =>
+                    alert(
+                      `🖨️ IMPRIMIENDO TICKET DE REMESA DE VENTANILLA:\n----------------------------------------\nDIVISAS REMESAS INT.\nCÓDIGO RETIRO: ${createdTransfer.withdrawalCode}\nREF: ${createdTransfer.reference}\nREMITENTE: ${createdTransfer.sender.fullName}\nBENEFICIARIO: ${createdTransfer.beneficiary.fullName}\nMONTO NETO A RETIRAR: ${createdTransfer.receiveAmount} ${createdTransfer.receiveCurrency}\n----------------------------------------`
+                    )
+                  }
+                >
+                  🖨️ Imprimir Ticket Ventanilla
+                </Button>
+              </div>
               <Button
                 variant="primary"
-                className="flex-1"
+                className="w-full mt-1"
                 onClick={() => {
                   setCreatedTransfer(null);
                   setStep("customer");
                   setDocNumber("");
+                  setCustomer(null);
                 }}
               >
-                Nueva Operación
+                Registrar Nueva Operación
               </Button>
             </div>
           </div>

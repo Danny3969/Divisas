@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { TransferStatus } from '@prisma/client';
+import { AuditAction, Role, TransferStatus } from '@prisma/client';
+import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import * as bcrypt from 'bcryptjs';
+import { AuthUser } from '../common/current-user.decorator';
 
 @Injectable()
 export class AdminService {
@@ -57,6 +60,143 @@ export class AdminService {
       auditRecent,
       totals,
     };
+  }
+
+  async listUsers() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        officeId: true,
+        office: { select: { id: true, name: true, country: { select: { code: true, name: true } } } },
+        active: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createUser(dto: CreateUserDto, actor: AuthUser) {
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existing) throw new BadRequestException('Ya existe un usuario con este correo electrónico');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        fullName: dto.fullName,
+        role: dto.role,
+        officeId: dto.officeId ?? null,
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        officeId: true,
+        active: true,
+        createdAt: true,
+      },
+    });
+
+    await this.audit.record({
+      actor,
+      action: AuditAction.CREATE,
+      entity: 'User',
+      entityId: user.id,
+      after: { email: user.email, role: user.role, fullName: user.fullName },
+    });
+
+    return user;
+  }
+
+  async updateUser(id: string, dto: UpdateUserDto, actor: AuthUser) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: {
+        fullName: dto.fullName ?? user.fullName,
+        role: dto.role ?? user.role,
+        officeId: dto.officeId !== undefined ? dto.officeId : user.officeId,
+        active: dto.active !== undefined ? dto.active : user.active,
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        officeId: true,
+        active: true,
+      },
+    });
+
+    await this.audit.record({
+      actor,
+      action: AuditAction.UPDATE,
+      entity: 'User',
+      entityId: id,
+      before: { role: user.role, active: user.active },
+      after: { role: updated.role, active: updated.active },
+    });
+
+    return updated;
+  }
+
+  async resetUserPassword(id: string, newPassword: string, actor: AuthUser) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+
+    await this.audit.record({
+      actor,
+      action: AuditAction.UPDATE,
+      entity: 'User',
+      entityId: id,
+      after: { action: 'RESET_PASSWORD' },
+    });
+
+    return { success: true, message: 'Contraseña actualizada con éxito' };
+  }
+
+  /**
+   * Limpia datos de prueba/ficticios conservando infraestructura inicial (países, corredores, oficinas y cuentas).
+   */
+  async resetDemoData(actor: AuthUser) {
+    await this.prisma.$transaction([
+      this.prisma.transferEvent.deleteMany({}),
+      this.prisma.payment.deleteMany({}),
+      this.prisma.payout.deleteMany({}),
+      this.prisma.settlement.deleteMany({}),
+      this.prisma.riskAssessment.deleteMany({}),
+      this.prisma.riskAlert.deleteMany({}),
+      this.prisma.amlCase.deleteMany({}),
+      this.prisma.ledgerEntry.deleteMany({}),
+      this.prisma.transfer.deleteMany({}),
+      this.prisma.quote.deleteMany({}),
+      this.prisma.cashMovement.deleteMany({}),
+      this.prisma.cashSession.deleteMany({}),
+      this.prisma.cashAccount.updateMany({ data: { balance: 0 } }),
+    ]);
+
+    await this.audit.record({
+      actor,
+      action: AuditAction.DELETE,
+      entity: 'SystemData',
+      entityId: 'reset-demo',
+      after: { action: 'PURGE_FICTITIOUS_DATA' },
+    });
+
+    return { success: true, message: 'Datos ficticios eliminados. Sistema preparado para operaciones reales.' };
   }
 
   async auditLogs(query: { entity?: string; limit?: number }) {

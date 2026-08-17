@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Alert,
@@ -69,6 +69,20 @@ export default function PayoutPage() {
       setLoading(false);
     }
   };
+
+  const [pendingTransfers, setPendingTransfers] = useState<Transfer[]>([]);
+
+  useEffect(() => {
+    let ignore = false;
+    get<{ items: Transfer[] }>("/transfers?status=SETTLEMENT_PENDING&limit=20")
+      .then((res) => {
+        if (!ignore && res?.items) setPendingTransfers(res.items);
+      })
+      .catch(() => undefined);
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const validForPayout =
     transfer && transfer.status === "SETTLEMENT_PENDING" && !transfer.withdrawalUsed;
@@ -199,6 +213,63 @@ export default function PayoutPage() {
           </Button>
         </Alert>
       )}
+
+      <Card
+        title="📋 Giros Pendientes de Retiro (Registrados desde otras agencias)"
+        action={
+          <Badge className="bg-blue-100 text-blue-800">
+            {pendingTransfers.length} Pendientes
+          </Badge>
+        }
+      >
+        <div className="space-y-3">
+          {pendingTransfers.length === 0 ? (
+            <div className="text-center py-6 text-xs text-slate-400">
+              No hay giros pendientes de retiro en este momento.
+            </div>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
+                  <th className="py-2">Referencia</th>
+                  <th className="py-2">Remitente</th>
+                  <th className="py-2">Beneficiario</th>
+                  <th className="py-2">Monto a Entregar</th>
+                  <th className="py-2">Código de Retiro</th>
+                  <th className="py-2 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingTransfers.map((t) => (
+                  <tr key={t.id} className="border-b border-slate-50 hover:bg-slate-50">
+                    <td className="py-2 font-mono font-bold text-slate-800">{t.reference}</td>
+                    <td className="py-2">{t.sender.fullName}</td>
+                    <td className="py-2 font-semibold text-slate-800">{t.beneficiary.fullName}</td>
+                    <td className="py-2 font-bold text-emerald-800">
+                      {fmtMoney(t.receiveAmount, t.receiveCurrency)}
+                    </td>
+                    <td className="py-2">
+                      <span className="font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded text-[11px] border border-slate-200">
+                        ••••-••••-•••• (Oculto)
+                      </span>
+                    </td>
+                    <td className="py-2 text-right">
+                      <button
+                        onClick={() => {
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="text-xs font-semibold text-blue-600 hover:underline"
+                      >
+                        Ingresar Código ↑
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

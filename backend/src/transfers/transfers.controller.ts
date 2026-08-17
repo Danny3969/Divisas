@@ -57,4 +57,16 @@ export class TransfersController {
   ) {
     return this.service.transition(id, dto.toStatus, user, dto.note);
   }
+
+  @Post(':id/regenerate-code')
+  @Roles(Role.ADMIN, Role.SUPERVISOR)
+  regenerateCode(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.service.regenerateWithdrawalCode(id, user);
+  }
+
+  @Get(':id/whatsapp-link')
+  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.ADMIN, Role.CUSTOMER)
+  getWhatsappLink(@Param('id') id: string) {
+    return this.service.getWhatsappLink(id);
+  }
 }

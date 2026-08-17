@@ -64,6 +64,8 @@ function Sidebar() {
   );
 }
 
+import { FxTicker } from "@/components/fx-ticker";
+
 export default function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -77,9 +79,12 @@ export default function AppLayout({
   if (!hydrated || !token) return null;
 
   return (
-    <div className="flex h-full">
-      <Sidebar />
-      <main className="flex-1 overflow-auto bg-slate-100 p-6">{children}</main>
+    <div className="flex h-full flex-col">
+      <FxTicker />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-auto bg-slate-100 p-6">{children}</main>
+      </div>
     </div>
   );
 }

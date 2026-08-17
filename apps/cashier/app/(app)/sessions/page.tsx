@@ -144,48 +144,63 @@ export default function SessionsPage() {
       </div>
 
       {!activeSession ? (
-        <Card title="Abrir sesión">
-          <div className="space-y-3">
+        <Card title="🌅 INICIO DE CAJA (Apertura de Turno Diario)">
+          <div className="space-y-4">
+            <p className="text-xs text-slate-600">
+              Registra el monto inicial de efectivo con el que abre la caja la cajera al comenzar la jornada.
+            </p>
             <Select
-              label="Caja"
+              label="Caja a Aperturar"
               value={selected || accounts[0]?.id || ""}
               onChange={(e) => setSelected(e.target.value)}
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.code} ({a.currency})
+                  {a.code} ({a.currency}) — Saldo disponible: {fmtMoney(a.balance, a.currency)}
                 </option>
               ))}
             </Select>
             <Input
-              label="Saldo de apertura (contado en caja)"
+              label="Saldo de apertura (Efectivo físico contado en caja)"
               type="number"
               min="0"
               step="0.01"
               value={openingBalance}
               onChange={(e) => setOpeningBalance(e.target.value)}
+              placeholder="0.00"
             />
-            <Button onClick={openSession} loading={working} className="w-full">
-              Abrir sesión
+            <Button onClick={openSession} loading={working} className="w-full font-bold">
+              🌅 Registrar Inicio de Caja
             </Button>
           </div>
         </Card>
       ) : (
         <Card
-          title="Cierre de sesión / arqueo"
+          title="🌆 CIERRE DE CAJA (Arqueo y Cuadre Final de Turno)"
           action={
             <Badge className="bg-emerald-100 text-emerald-800">
               En curso desde {fmtDate(activeSession.openedAt)}
             </Badge>
           }
         >
-          <div className="space-y-3">
-            <div className="text-sm text-slate-600">
-              Saldo esperado según el sistema:{" "}
-              <span className="font-semibold">
-                {fmtMoney(activeSession.expectedBalance, "USD")}
-              </span>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-slate-50 p-4 border border-slate-200 text-sm space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-600">Monto de Apertura:</span>
+                <span className="font-semibold">{fmtMoney(activeSession.openingBalance, "USD")}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 pt-2">
+                <span className="text-slate-800 font-bold">Saldo Esperado según el Sistema:</span>
+                <span className="font-extrabold text-blue-700 text-base">
+                  {fmtMoney(activeSession.expectedBalance, "USD")}
+                </span>
+              </div>
             </div>
+
+            <p className="text-xs text-slate-500">
+              Al finalizar el turno, la cajera debe contar todo el efectivo físico en billetes y monedas e ingresar el total para realizar el arqueo final.
+            </p>
+
             <CloseButton
               session={activeSession}
               onClose={closeSession}
@@ -261,10 +276,14 @@ function CloseButton({
   working: boolean;
 }) {
   const [amount, setAmount] = useState("");
+  const expected = Number(session.expectedBalance || 0);
+  const counted = amount !== "" ? Number(amount) : null;
+  const diff = counted != null ? counted - expected : null;
+
   return (
     <div className="space-y-3">
       <Input
-        label="Monto contado al arqueo"
+        label="Monto contado al arqueo (Efectivo físico en caja)"
         type="number"
         min="0"
         step="0.01"
@@ -272,13 +291,26 @@ function CloseButton({
         onChange={(e) => setAmount(e.target.value)}
         placeholder={session.expectedBalance}
       />
+      {diff != null && (
+        <div
+          className={`p-3 rounded-lg text-xs font-semibold ${
+            Math.abs(diff) < 0.01
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+              : "bg-amber-50 text-amber-900 border border-amber-200"
+          }`}
+        >
+          {Math.abs(diff) < 0.01
+            ? "✅ Arqueo perfecto: Sin diferencia entre dinero físico y sistema."
+            : `⚠️ Diferencia detectada: ${diff > 0 ? "+" : ""}${diff.toFixed(2)} USD (${diff > 0 ? "Sobrante" : "Faltante"})`}
+        </div>
+      )}
       <Button
         onClick={() => onClose(session.id, Number(amount))}
         loading={working}
         disabled={amount === ""}
-        className="w-full"
+        className="w-full font-bold"
       >
-        Cerrar sesión con arqueo
+        🌆 Realizar Arqueo y Cerrar Caja
       </Button>
     </div>
   );

@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
+import { CurrentUser, AuthUser } from '../common/current-user.decorator';
 import { AdminService } from './admin.service';
 import { Role } from '@prisma/client';
+import { CreateUserDto, ResetPasswordDto, UpdateUserDto } from './dto/user.dto';
 
 @Controller('admin')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -14,6 +16,36 @@ export class AdminController {
   @Roles(Role.SUPERVISOR, Role.TREASURY, Role.ADMIN, Role.COMPLIANCE, Role.AUDITOR)
   dashboard() {
     return this.service.dashboard();
+  }
+
+  @Get('users')
+  @Roles(Role.ADMIN, Role.SUPERVISOR)
+  listUsers() {
+    return this.service.listUsers();
+  }
+
+  @Post('users')
+  @Roles(Role.ADMIN)
+  createUser(@Body() dto: CreateUserDto, @CurrentUser() user: AuthUser) {
+    return this.service.createUser(dto, user);
+  }
+
+  @Patch('users/:id')
+  @Roles(Role.ADMIN)
+  updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: AuthUser) {
+    return this.service.updateUser(id, dto, user);
+  }
+
+  @Post('users/:id/reset-password')
+  @Roles(Role.ADMIN)
+  resetUserPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto, @CurrentUser() user: AuthUser) {
+    return this.service.resetUserPassword(id, dto.newPassword, user);
+  }
+
+  @Post('reset-demo-data')
+  @Roles(Role.ADMIN)
+  resetDemoData(@CurrentUser() user: AuthUser) {
+    return this.service.resetDemoData(user);
   }
 
   @Get('audit')

@@ -26,6 +26,34 @@ export default function TransferDetailPage() {
     if (qid) setId(qid);
   }, []);
 
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  const handleRegenerateCode = async () => {
+    if (!t) return;
+    setActionLoading(true);
+    setError(null);
+    try {
+      const res = await post<Transfer>(`/transfers/${t.id}/regenerate-code`, {});
+      setT(res);
+      setActionSuccess("¡Nuevo código de retiro generado con éxito y notificado a ventanilla!");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al regenerar código");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenWhatsapp = async () => {
+    if (!t) return;
+    try {
+      const res = await get<{ link: string }>(`/transfers/${t.id}/whatsapp-link`);
+      window.open(res.link, "_blank");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al generar enlace de WhatsApp");
+    }
+  };
+
   if (error)
     return (
       <div className="space-y-4">
@@ -39,6 +67,35 @@ export default function TransferDetailPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {actionSuccess && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 text-sm font-semibold">
+          {actionSuccess}
+        </div>
+      )}
+
+      {t.status === "RISK_BLOCKED" && (
+        <Card className="border-red-300 bg-red-50">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 font-bold text-red-800">
+              <span>⚠️ ALERTA DE SEGURIDAD ANTI-FRAUDE</span>
+            </div>
+            <p className="text-xs text-red-700">
+              Esta operación fue BLOQUEADA debido a 3 intentos fallidos de verificación de documento en la ventanilla de retiro en Perú.
+            </p>
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                variant="primary"
+                className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                onClick={handleRegenerateCode}
+                disabled={actionLoading}
+              >
+                {actionLoading ? "Regenerando..." : "🔑 Desbloquear y Regenerar Nuevo Código"}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-mono text-xl font-bold text-slate-900">
@@ -48,9 +105,16 @@ export default function TransferDetailPage() {
             {fmtDate(t.createdAt)}
           </div>
         </div>
-        <Badge className={STATUS_COLORS[t.status]}>
-          {STATUS_LABELS[t.status] ?? t.status}
-        </Badge>
+        <div className="flex items-center gap-3">
+          {t.withdrawalCode && (
+            <Button variant="secondary" onClick={handleOpenWhatsapp} className="border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+              📲 Notificar por WhatsApp
+            </Button>
+          )}
+          <Badge className={STATUS_COLORS[t.status]}>
+            {STATUS_LABELS[t.status] ?? t.status}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -83,8 +147,16 @@ export default function TransferDetailPage() {
           <div className="font-mono text-sm font-bold text-slate-900">
             {t.withdrawalCode ?? "—"}
           </div>
-          <div className="text-xs text-slate-500">
-            {t.withdrawalUsed ? "Utilizado" : "No utilizado"}
+          <div className="text-xs text-slate-500 flex items-center justify-between mt-1">
+            <span>{t.withdrawalUsed ? "Utilizado" : "No utilizado"}</span>
+            {t.payoutMethod === "CASH" && (
+              <button
+                onClick={handleRegenerateCode}
+                className="text-xs font-semibold text-blue-600 hover:underline"
+              >
+                Regenerar
+              </button>
+            )}
           </div>
         </Card>
       </div>

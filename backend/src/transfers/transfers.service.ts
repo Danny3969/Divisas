@@ -26,9 +26,9 @@ const ALLOWED: Record<TransferStatus, TransferStatus[]> = {
   RISK_CHECK: ['APPROVED', 'MANUAL_REVIEW', 'AML_REVIEW', 'RISK_BLOCKED'],
   MANUAL_REVIEW: ['APPROVED', 'RISK_BLOCKED', 'REFUND_PENDING', 'CANCELLED'],
   AML_REVIEW: ['APPROVED', 'RISK_BLOCKED', 'REFUND_PENDING'],
-  RISK_BLOCKED: ['REFUND_PENDING'],
+  RISK_BLOCKED: ['REFUND_PENDING', 'SETTLEMENT_PENDING'],
   APPROVED: ['SETTLEMENT_PENDING'],
-  SETTLEMENT_PENDING: ['PAYOUT_PROCESSING', 'PAYOUT_FAILED'],
+  SETTLEMENT_PENDING: ['PAYOUT_PROCESSING', 'PAYOUT_FAILED', 'RISK_BLOCKED'],
   PAYOUT_PROCESSING: ['PAID', 'PAYOUT_FAILED', 'PAYOUT_REJECTED'],
   PAYOUT_FAILED: ['PAYOUT_PROCESSING', 'PAYOUT_REJECTED'],
   PAYOUT_REJECTED: ['PAYOUT_PROCESSING', 'REFUND_PENDING'],
@@ -119,7 +119,7 @@ export class TransfersService {
           remittanceReason: dto.remittanceReason ?? null,
           withdrawalCode,
           withdrawalExpiresAt: withdrawalCode
-            ? new Date(Date.now() + 24 * 60 * 60 * 1000)
+            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 días de vigencia
             : null,
         },
       });
@@ -299,5 +299,66 @@ export class TransfersService {
       this.prisma.transfer.count({ where }),
     ]);
     return { items, total, page, limit };
+  }
+
+  /**
+   * Regenera el código de retiro cuando una operación fue bloqueada por 3 intentos fallidos o requerida por Admin.
+   */
+  async regenerateWithdrawalCode(id: string, actor: AuthUser) {
+    if (actor.role !== Role.ADMIN && actor.role !== Role.SUPERVISOR) {
+      throw new ForbiddenException('Solo un Administrador o Supervisor puede regenerar códigos de retiro');
+    }
+    const transfer = await this.prisma.transfer.findUnique({ where: { id } });
+    if (!transfer) throw new NotFoundException('Transferencia no encontrada');
+    if (transfer.payoutMethod !== PayoutMethod.CASH) {
+      throw new BadRequestException('Solo las operaciones con retiro en efectivo tienen código');
+    }
+
+    const newCode = makeWithdrawalCode();
+    const updated = await this.prisma.transfer.update({
+      where: { id },
+      data: {
+        withdrawalCode: newCode,
+        withdrawalAttempts: 0,
+        withdrawalExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días de vigencia
+        status: transfer.status === TransferStatus.RISK_BLOCKED ? TransferStatus.SETTLEMENT_PENDING : transfer.status,
+      },
+    });
+
+    await this.prisma.transferEvent.create({
+      data: {
+        transferId: id,
+        fromStatus: transfer.status,
+        toStatus: updated.status,
+        actorId: actor.userId,
+        note: `Código de retiro regenerado por ${actor.role}. Nuevo código emitido: ${newCode}`,
+      },
+    });
+
+    await this.audit.record({
+      actor,
+      action: AuditAction.APPROVE,
+      entity: 'Transfer',
+      entityId: id,
+      after: { action: 'REGENERATE_CODE', newCode },
+    });
+
+    return this.findOne(id);
+  }
+
+  /**
+   * Genera el mensaje y enlace oficial de WhatsApp para notificar al beneficiario.
+   */
+  async getWhatsappLink(id: string) {
+    const transfer = await this.findOne(id);
+    if (!transfer.withdrawalCode) {
+      throw new BadRequestException('La operación no tiene código de retiro generado');
+    }
+
+    const text = `*DIVISAS REMESAS INTERNACIONALES*\n\nHola *${transfer.beneficiary.fullName}*,\n\n*${transfer.sender.fullName}* te ha enviado un giro por *${transfer.receiveAmount} ${transfer.receiveCurrency}*.\n\nPuedes retirarlo en cualquier oficina de Divisas en Perú presentando tu DNI y el siguiente código:\n\n🔑 *Código de Retiro:* ${transfer.withdrawalCode}\n\nVigencia: 30 días. ¡Gracias por confiar en Divisas!`;
+    const encoded = encodeURIComponent(text);
+    const phoneClean = transfer.beneficiary.phone ? transfer.beneficiary.phone.replace(/\D/g, '') : '';
+    const link = phoneClean ? `https://wa.me/${phoneClean}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+    return { text, link, phone: transfer.beneficiary.phone };
   }
 }
