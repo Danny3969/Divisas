@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser, AuthUser } from '../common/current-user.decorator';
 import { CustomersService } from './customers.service';
-import { CreateCustomerDto, ApproveKycDto } from './dto/customer.dto';
+import { CreateCustomerDto, ApproveKycDto, UpdateCustomerDto } from './dto/customer.dto';
 import { Role } from '@prisma/client';
 
 @Controller('customers')
@@ -40,6 +40,18 @@ export class CustomersController {
   @Roles(Role.CASHIER, Role.SUPERVISOR, Role.COMPLIANCE, Role.TREASURY, Role.ADMIN, Role.AUDITOR)
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
+  }
+
+  @Patch(':id')
+  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.ADMIN)
+  update(@Param('id') id: string, @Body() dto: UpdateCustomerDto, @CurrentUser() user: AuthUser) {
+    return this.service.update(id, dto, user);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.SUPERVISOR)
+  delete(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.service.delete(id, user);
   }
 
   @Post(':id/kyc')

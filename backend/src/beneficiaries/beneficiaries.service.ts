@@ -71,6 +71,7 @@ export class BeneficiariesService {
       where.OR = [
         { fullName: { contains: query.search, mode: 'insensitive' } },
         { documentNumber: { contains: query.search } },
+        { phone: { contains: query.search } },
       ];
     }
     return this.prisma.beneficiary.findMany({
@@ -79,5 +80,39 @@ export class BeneficiariesService {
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
+  }
+
+  async update(id: string, dto: any, actor: AuthUser) {
+    const ben = await this.prisma.beneficiary.findUnique({ where: { id } });
+    if (!ben) throw new NotFoundException('Beneficiario no encontrado');
+    await this.assertCustomerOwned(ben.customerId, actor);
+    const updated = await this.prisma.beneficiary.update({
+      where: { id },
+      data: dto,
+    });
+    await this.audit.record({
+      actor,
+      action: AuditAction.UPDATE,
+      entity: 'Beneficiary',
+      entityId: id,
+      before: { fullName: ben.fullName, phone: ben.phone },
+      after: { fullName: updated.fullName, phone: updated.phone },
+    });
+    return updated;
+  }
+
+  async delete(id: string, actor: AuthUser) {
+    const ben = await this.prisma.beneficiary.findUnique({ where: { id } });
+    if (!ben) throw new NotFoundException('Beneficiario no encontrado');
+    await this.assertCustomerOwned(ben.customerId, actor);
+    await this.prisma.beneficiary.delete({ where: { id } });
+    await this.audit.record({
+      actor,
+      action: AuditAction.DELETE,
+      entity: 'Beneficiary',
+      entityId: id,
+      before: { fullName: ben.fullName, documentNumber: ben.documentNumber },
+    });
+    return { success: true, message: 'Beneficiario eliminado correctamente' };
   }
 }

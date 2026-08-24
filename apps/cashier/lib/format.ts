@@ -76,3 +76,38 @@ export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrador",
   AUDITOR: "Auditor",
 };
+
+export const fmtPhone = (phone?: string | null, countryCode?: string) => {
+  if (!phone) return "Sin teléfono";
+  const raw = phone.trim();
+  if (!raw) return "Sin teléfono";
+
+  if (raw.startsWith("+")) {
+    if (raw.startsWith("+593")) return `+593 ${raw.slice(4).trim()}`;
+    if (raw.startsWith("+51")) return `+51 ${raw.slice(3).trim()}`;
+    return raw;
+  }
+
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "Sin teléfono";
+
+  if (digits.startsWith("593")) return `+593 ${digits.slice(3)}`;
+  if (digits.startsWith("51")) return `+51 ${digits.slice(2)}`;
+
+  const prefix = countryCode === "EC" || countryCode === "ECUADOR" ? "+593" : "+51";
+  return `${prefix} ${digits}`;
+};
+
+export const normalizePhone = (phone: string, countryCode?: string, selectedPrefix?: string) => {
+  if (!phone) return "";
+  const trimmed = phone.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("+")) return trimmed;
+  const digits = trimmed.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("593")) return `+${digits}`;
+  if (digits.startsWith("51")) return `+${digits}`;
+
+  const prefix = selectedPrefix || (countryCode === "EC" || countryCode === "ECUADOR" ? "+593" : "+51");
+  return `${prefix}${digits.replace(/^0+/, "")}`;
+};

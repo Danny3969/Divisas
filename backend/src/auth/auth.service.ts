@@ -58,7 +58,7 @@ export class AuthService {
             countryId: dto.customer.countryId,
             email: dto.email,
             phone: dto.phone,
-            kycStatus: 'PENDING',
+            kycStatus: 'APPROVED',
           },
         });
       }
@@ -75,7 +75,14 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip?: string) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      include: {
+        office: {
+          include: { country: true },
+        },
+      },
+    });
     if (!user || !user.active) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
@@ -103,6 +110,7 @@ export class AuthService {
     fullName: string;
     role: string;
     officeId: string | null;
+    office?: { id: string; name: string; country?: { code: string; name: string } | null } | null;
   }) {
     const payload: AuthUser = {
       userId: user.id,
@@ -113,7 +121,7 @@ export class AuthService {
     return {
       accessToken: this.jwt.sign(payload, {
         secret: this.config.get('JWT_SECRET'),
-        expiresIn: this.config.get('JWT_EXPIRES_IN') || '8h',
+        expiresIn: this.config.get('JWT_EXPIRES_IN') || '30d',
       }),
       user: {
         id: user.id,
@@ -121,6 +129,16 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         officeId: user.officeId,
+        officeName: user.office?.name ?? null,
+        office: user.office
+          ? {
+              id: user.office.id,
+              name: user.office.name,
+              country: user.office.country
+                ? { code: user.office.country.code, name: user.office.country.name }
+                : null,
+            }
+          : null,
       },
     };
   }

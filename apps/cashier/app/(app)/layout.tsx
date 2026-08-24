@@ -18,11 +18,27 @@ function Sidebar() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
+  // Determinar país de la caja según la oficina del cajero
+  const countryCode = user?.office?.country?.code ?? "";
+  const cajaLabel =
+    countryCode === "PE"
+      ? "🇵🇪 Caja Perú"
+      : countryCode === "EC"
+        ? "🇪🇨 Caja Ecuador"
+        : "Consola de caja";
+
+  const headerColor =
+    countryCode === "PE"
+      ? "bg-red-700"
+      : countryCode === "EC"
+        ? "bg-yellow-500"
+        : "bg-blue-700";
+
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-4 py-4">
-        <div className="text-lg font-bold text-blue-700">Divisas</div>
-        <div className="text-xs text-slate-500">Consola de caja</div>
+      <div className={`px-4 py-4 ${headerColor}`}>
+        <div className="text-lg font-bold text-white">Divisas</div>
+        <div className="text-sm font-semibold text-white/90">{cajaLabel}</div>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {NAV.map((item) => {

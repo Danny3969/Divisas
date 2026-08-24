@@ -10,6 +10,7 @@ const NAV = [
   { href: "/dashboard", label: "Panel" },
   { href: "/transfers", label: "Operaciones" },
   { href: "/customers", label: "Clientes" },
+  { href: "/beneficiaries", label: "Beneficiarios" },
   { href: "/users", label: "Usuarios" },
   { href: "/fx", label: "Tasas FX" },
   { href: "/treasury", label: "Tesorería" },

@@ -43,3 +43,25 @@ export class CreateBeneficiaryAccountDto {
   @IsString()
   currency?: string;
 }
+
+export class UpdateBeneficiaryDto {
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsEnum(DocumentType)
+  documentType?: DocumentType;
+
+  @IsOptional()
+  @IsString()
+  documentNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  countryId?: string;
+}

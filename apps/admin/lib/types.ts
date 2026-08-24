@@ -78,8 +78,11 @@ export interface Beneficiary {
   fullName: string;
   documentType: string;
   documentNumber: string;
+  phone?: string;
   relation?: string;
   accounts: BeneficiaryAccount[];
+  customer?: { id: string; fullName: string; documentType: string; documentNumber: string };
+  createdAt?: string;
 }
 
 export interface Quote {

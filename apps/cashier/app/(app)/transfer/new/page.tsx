@@ -12,7 +12,7 @@ import {
   Spinner,
 } from "@/components/ui";
 import { get, post } from "@/lib/api";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtPhone, normalizePhone } from "@/lib/format";
 import type {
   Beneficiary,
   CashAccount,
@@ -59,8 +59,16 @@ function CreateCustomerForm({
     email: "",
     phone: "",
   });
+  const [phonePrefix, setPhonePrefix] = useState("+593");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const handleCountryChange = (cId: string) => {
+    const selected = countries.find((c) => c.id === cId);
+    setForm({ ...form, countryId: cId });
+    if (selected?.code === "PE") setPhonePrefix("+51");
+    else if (selected?.code === "EC") setPhonePrefix("+593");
+  };
 
   const submit = async () => {
     if (!form.fullName || !form.documentNumber || !form.countryId) {
@@ -70,10 +78,14 @@ function CreateCustomerForm({
     setError(null);
     setLoading(true);
     try {
+      const selectedCountry = countries.find((c) => c.id === form.countryId);
+      const countryCode = selectedCountry?.code || "EC";
+      const formattedPhone = normalizePhone(form.phone, countryCode, phonePrefix);
+
       const payload = {
         ...form,
         email: form.email || undefined,
-        phone: form.phone || undefined,
+        phone: formattedPhone || undefined,
       };
       const c = await post<Customer>("/customers", payload);
       onCreated(c);
@@ -122,7 +134,7 @@ function CreateCustomerForm({
         <Select
           label="País"
           value={form.countryId}
-          onChange={(e) => setForm({ ...form, countryId: e.target.value })}
+          onChange={(e) => handleCountryChange(e.target.value)}
         >
           {countries.map((c) => (
             <option key={c.id} value={c.id}>
@@ -130,11 +142,27 @@ function CreateCustomerForm({
             </option>
           ))}
         </Select>
-        <Input
-          label="Teléfono"
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-        />
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-slate-700">Teléfono (Prefijo País)</label>
+          <div className="flex gap-2">
+            <Select
+              value={phonePrefix}
+              onChange={(e) => setPhonePrefix(e.target.value)}
+              className="w-32 text-xs font-bold"
+            >
+              <option value="+593">🇪🇨 +593 (EC)</option>
+              <option value="+51">🇵🇪 +51 (PE)</option>
+            </Select>
+            <Input
+              placeholder="Ej. 987654321"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              className="flex-1"
+            />
+          </div>
+        </div>
+
         <Input
           label="Correo (opcional)"
           type="email"
@@ -159,51 +187,74 @@ function CreateBeneficiaryForm({
   customerId,
   countries,
   destinationCode,
+  payoutMethod,
   onCreated,
   onCancel,
 }: {
   customerId: string;
   countries: Country[];
   destinationCode: string;
+  payoutMethod: PayoutMethod;
   onCreated: (b: Beneficiary) => void;
   onCancel: () => void;
 }) {
+  const defaultCountry = countries.find((c) => c.code === destinationCode);
   const [form, setForm] = useState({
     fullName: "",
     documentType: "DNI",
     documentNumber: "",
-    countryId: countries.find((c) => c.code === destinationCode)?.id ?? "",
+    countryId: defaultCountry?.id ?? "",
     phone: "",
-    bankName: "",
+    bankName: payoutMethod === "MOBILE_WALLET" ? "YAPE" : "BCP",
     accountNumber: "",
+    accountType: "AHORROS",
     currency: "PEN",
   });
+  const [phonePrefix, setPhonePrefix] = useState(
+    payoutMethod === "MOBILE_WALLET" || destinationCode === "PE" ? "+51" : "+593"
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
-    if (!form.fullName || !form.documentNumber || !form.countryId) {
-      setError("Complete nombre, documento y país del beneficiario.");
+    if (!form.fullName) {
+      setError("Ingrese el nombre completo del beneficiario.");
       return;
     }
+    if (payoutMethod === "MOBILE_WALLET" && !form.phone) {
+      setError("Para retiro por Yape es obligatorio ingresar el número de teléfono.");
+      return;
+    }
+    if (payoutMethod === "BANK" && (!form.bankName || !form.accountNumber)) {
+      setError("Para retiro por cuenta bancaria debe ingresar el Banco y el Número de cuenta / CCI.");
+      return;
+    }
+
     setError(null);
     setLoading(true);
     try {
+      const destCountry = countries.find((c) => c.id === form.countryId);
+      const countryCode = payoutMethod === "MOBILE_WALLET" ? "PE" : (destCountry?.code || destinationCode || "PE");
+      const formattedPhone = normalizePhone(form.phone, countryCode, phonePrefix);
+
       const b = await post<Beneficiary>("/beneficiaries", {
         customerId,
         fullName: form.fullName,
         documentType: form.documentType,
-        documentNumber: form.documentNumber,
+        documentNumber: form.documentNumber || "00000000",
         countryId: form.countryId,
-        phone: form.phone || undefined,
+        phone: formattedPhone || undefined,
       });
-      if (form.accountNumber && form.bankName) {
+
+      if (payoutMethod === "BANK" && form.accountNumber && form.bankName) {
         await post(`/beneficiaries/${b.id}/accounts`, {
           bankName: form.bankName,
           accountNumber: form.accountNumber,
-          currency: form.currency || undefined,
+          currency: form.currency || "PEN",
+          accountType: form.accountType,
         });
       }
+
       onCreated({ ...b, accounts: [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear beneficiario");
@@ -214,72 +265,160 @@ function CreateBeneficiaryForm({
 
   return (
     <div className="space-y-3 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 p-4">
-      <div className="text-sm font-semibold text-emerald-800">
-        Sin beneficiarios — registrar uno
+      <div className="text-sm font-semibold text-emerald-800 flex items-center justify-between">
+        <span>
+          {payoutMethod === "CASH" && "💵 Registrar Beneficiario para Efectivo"}
+          {payoutMethod === "MOBILE_WALLET" && "📱 Registrar Datos para Yape"}
+          {payoutMethod === "BANK" && "🏦 Registrar Beneficiario y Cuenta Bancaria"}
+        </span>
       </div>
       {error && <Alert>{error}</Alert>}
+
       <div className="grid grid-cols-2 gap-3">
         <Input
-          label="Nombre completo"
+          label="Nombre completo del titular"
           value={form.fullName}
           onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+          placeholder="Ej: Juan Pérez García"
+          className={payoutMethod !== "BANK" ? "col-span-2" : ""}
         />
-        <Select
-          label="Tipo de documento"
-          value={form.documentType}
-          onChange={(e) => setForm({ ...form, documentType: e.target.value })}
-        >
-          <option value="DNI">DNI</option>
-          <option value="CEDULA">Cédula</option>
-          <option value="PASSPORT">Pasaporte</option>
-        </Select>
-        <Input
-          label="Número de documento"
-          value={form.documentNumber}
-          onChange={(e) => setForm({ ...form, documentNumber: e.target.value })}
-        />
-        <Select
-          label="País"
-          value={form.countryId}
-          onChange={(e) => setForm({ ...form, countryId: e.target.value })}
-        >
-          {countries.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </Select>
-        <Input
-          label="Teléfono (opcional)"
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-        />
-        <Input
-          label="Banco (opcional, para pago bancario)"
-          value={form.bankName}
-          onChange={(e) => setForm({ ...form, bankName: e.target.value })}
-          placeholder="BCP, Banco Pichincha..."
-        />
-        <Input
-          label="Número de cuenta (opcional)"
-          value={form.accountNumber}
-          onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
-        />
-        <Select
-          label="Moneda de la cuenta"
-          value={form.currency}
-          onChange={(e) => setForm({ ...form, currency: e.target.value })}
-        >
-          <option value="PEN">PEN</option>
-          <option value="USD">USD</option>
-        </Select>
+
+        {payoutMethod === "MOBILE_WALLET" && (
+          <div className="col-span-2 space-y-1">
+            <label className="text-xs font-semibold text-emerald-800">📱 Número de Teléfono Yape (+51 Perú / +593 Ecuador)</label>
+            <div className="flex gap-2">
+              <Select
+                value={phonePrefix}
+                onChange={(e) => setPhonePrefix(e.target.value)}
+                className="w-36 text-xs font-bold border-emerald-500"
+              >
+                <option value="+51">🇵🇪 +51 (Perú)</option>
+                <option value="+593">🇪🇨 +593 (Ecuador)</option>
+              </Select>
+              <Input
+                type="tel"
+                required
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="Ej: 987654321"
+                className="flex-1 border-emerald-500 font-bold"
+              />
+            </div>
+          </div>
+        )}
+
+        {payoutMethod !== "MOBILE_WALLET" && (
+          <>
+            <Select
+              label="Tipo de documento"
+              value={form.documentType}
+              onChange={(e) => setForm({ ...form, documentType: e.target.value })}
+            >
+              <option value="DNI">DNI (Perú)</option>
+              <option value="CEDULA">Cédula</option>
+              <option value="PASSPORT">Pasaporte</option>
+              <option value="RUC">RUC</option>
+            </Select>
+            <Input
+              label="Número de documento"
+              value={form.documentNumber}
+              onChange={(e) => setForm({ ...form, documentNumber: e.target.value })}
+              placeholder="Ej: 47102938"
+            />
+          </>
+        )}
+
+        {payoutMethod === "CASH" && (
+          <div className="col-span-2 space-y-1">
+            <label className="text-xs font-semibold text-slate-700">Teléfono del beneficiario (opcional)</label>
+            <div className="flex gap-2">
+              <Select
+                value={phonePrefix}
+                onChange={(e) => setPhonePrefix(e.target.value)}
+                className="w-36 text-xs font-bold"
+              >
+                <option value="+593">🇪🇨 +593 (Ecuador)</option>
+                <option value="+51">🇵🇪 +51 (Perú)</option>
+              </Select>
+              <Input
+                placeholder="Ej: 987654321"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="flex-1"
+              />
+            </div>
+          </div>
+        )}
+
+        {payoutMethod === "BANK" && (
+          <>
+            <Select
+              label="Banco de Destino"
+              value={form.bankName}
+              onChange={(e) => setForm({ ...form, bankName: e.target.value })}
+            >
+              <option value="BCP">BCP — Banco de Crédito del Perú</option>
+              <option value="INTERBANK">Interbank</option>
+              <option value="BBVA">BBVA Perú</option>
+              <option value="SCOTIABANK">Scotiabank</option>
+              <option value="BANCO_PICHINCHA">Banco Pichincha (Perú)</option>
+              <option value="BANCO_NACION">Banco de la Nación</option>
+              <option value="OTRO">Otro Banco</option>
+            </Select>
+            <Select
+              label="Tipo de Cuenta"
+              value={form.accountType}
+              onChange={(e) => setForm({ ...form, accountType: e.target.value })}
+            >
+              <option value="AHORROS">Cuenta de Ahorros</option>
+              <option value="CORRIENTE">Cuenta Corriente</option>
+              <option value="CCI">CCI (Código Interbancario)</option>
+            </Select>
+            <Input
+              label="Número de Cuenta o CCI"
+              value={form.accountNumber}
+              onChange={(e) => setForm({ ...form, accountNumber: e.target.value })}
+              placeholder="Ej: 193-9821039-0-81 ó CCI 20 dígitos"
+              className="col-span-2"
+            />
+            <Select
+              label="Moneda de la cuenta"
+              value={form.currency}
+              onChange={(e) => setForm({ ...form, currency: e.target.value })}
+            >
+              <option value="PEN">PEN (Soles)</option>
+              <option value="USD">USD (Dólares)</option>
+            </Select>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Teléfono contacto (opcional)</label>
+              <div className="flex gap-2">
+                <Select
+                  value={phonePrefix}
+                  onChange={(e) => setPhonePrefix(e.target.value)}
+                  className="w-32 text-xs font-bold"
+                >
+                  <option value="+51">🇵🇪 +51</option>
+                  <option value="+593">🇪🇨 +593</option>
+                </Select>
+                <Input
+                  placeholder="Ej: 987654321"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="flex-1"
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
-      <div className="flex gap-2">
+
+      <div className="flex gap-2 pt-2">
         <Button variant="secondary" onClick={onCancel} disabled={loading}>
           Cancelar
         </Button>
         <Button onClick={submit} loading={loading}>
-          Registrar beneficiario
+          Guardar beneficiario
         </Button>
       </div>
     </div>
@@ -306,8 +445,8 @@ export default function NewTransferPage() {
   const [remittanceReason, setRemittanceReason] = useState("Ayuda Familiar / Remesa");
   const [sourceOfFunds, setSourceOfFunds] = useState("Sueldo/Honorarios");
   const [highBillSerials, setHighBillSerials] = useState("");
-  const [cashAmountReceived, setCashAmountReceived] = useState("");
-  const [sendAmount, setSendAmount] = useState("100");
+  const [cashAmountReceived, setCashAmountReceived] = useState("0");
+  const [sendAmount, setSendAmount] = useState("0");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [createdTransfer, setCreatedTransfer] = useState<Transfer | null>(null);
   const [countries, setCountries] = useState<Country[]>([]);
@@ -580,6 +719,19 @@ export default function NewTransferPage() {
               </div>
             </div>
 
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <Select
+                label="Forma de entrega al beneficiario"
+                value={payoutMethod}
+                onChange={(e) => setPayoutMethod(e.target.value as PayoutMethod)}
+                className="font-bold text-blue-900"
+              >
+                <option value="CASH">💵 Retiro en Efectivo (Ventanilla)</option>
+                <option value="MOBILE_WALLET">📱 Retiro por Yape (Perú)</option>
+                <option value="BANK">🏦 Retiro por Cuenta Bancaria</option>
+              </Select>
+            </div>
+
             <Select
               label="Corredor de Giro"
               value={corridorId}
@@ -598,6 +750,7 @@ export default function NewTransferPage() {
                 customerId={customer.id}
                 countries={countries}
                 destinationCode={corridor?.toCountry.code ?? "PE"}
+                payoutMethod={payoutMethod}
                 onCreated={(b) => {
                   setBeneficiaries((prev) => [...prev, b]);
                   setBeneficiaryId(b.id);
@@ -606,94 +759,73 @@ export default function NewTransferPage() {
                 onCancel={() => setShowCreateBeneficiary(false)}
               />
             ) : (
-              <Select
-                label="Beneficiario (Persona que retira en Perú)"
-                value={beneficiaryId}
-                onChange={(e) => setBeneficiaryId(e.target.value)}
-              >
-                <option value="">Seleccionar…</option>
-                {beneficiaries.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.fullName} — {b.documentType} {b.documentNumber}
-                  </option>
-                ))}
-              </Select>
+              <div className="space-y-2">
+                <Select
+                  label={
+                    payoutMethod === "CASH"
+                      ? "Beneficiario (Retiro en Efectivo)"
+                      : payoutMethod === "MOBILE_WALLET"
+                      ? "Beneficiario Titular de Yape"
+                      : "Beneficiario (Cuenta Bancaria)"
+                  }
+                  value={beneficiaryId}
+                  onChange={(e) => setBeneficiaryId(e.target.value)}
+                >
+                  <option value="">Seleccionar beneficiario…</option>
+                  {beneficiaries.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.fullName} {b.phone ? `📱 ${b.phone}` : ""} — {b.documentType} {b.documentNumber}
+                    </option>
+                  ))}
+                </Select>
+
+                {beneficiaryId && payoutMethod === "MOBILE_WALLET" && (
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm">
+                    <span className="text-xs text-emerald-800 font-semibold uppercase tracking-wider block">Número Yape Asociado:</span>
+                    <span className="font-mono text-lg font-bold text-emerald-950">
+                      {beneficiaries.find((b) => b.id === beneficiaryId)?.phone || "📱 Ingrese el número Yape al cotizar"}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
             {!showCreateBeneficiary && (
               <button
                 onClick={() => setShowCreateBeneficiary(true)}
-                className="text-xs font-medium text-blue-700 hover:underline"
+                className="text-xs font-semibold text-blue-700 hover:underline"
               >
-                + Registrar nuevo beneficiario
+                + Registrar nuevo beneficiario {payoutMethod === "MOBILE_WALLET" ? "para Yape" : payoutMethod === "BANK" ? "y Cuenta Bancaria" : ""}
               </button>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <Select
-                label="Forma de entrega al beneficiario"
-                value={payoutMethod}
-                onChange={(e) => setPayoutMethod(e.target.value as PayoutMethod)}
-              >
-                <option value="CASH">{PAYOUT_LABELS.CASH}</option>
-                <option value="BANK">{PAYOUT_LABELS.BANK}</option>
-              </Select>
-              <Select
-                label="Forma de pago del remitente"
-                value={paymentMethod}
-                onChange={(e) =>
-                  setPaymentMethod(e.target.value as PaymentMethod)
-                }
-              >
-                <option value="CASH">{PAYMENT_LABELS.CASH}</option>
-                <option value="BANK_TRANSFER">
-                  {PAYMENT_LABELS.BANK_TRANSFER}
-                </option>
-              </Select>
-            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <Input
+                label={`Efectivo recibido del cliente (${corridor?.fromCurrency ?? "USD"})`}
+                type="number"
+                min="0"
+                step="0.01"
+                value={sendAmount}
+                onChange={(e) => {
+                  setSendAmount(e.target.value);
+                  setCashAmountReceived(e.target.value);
+                }}
+                placeholder="0"
+              />
 
-            <div className="grid grid-cols-2 gap-3">
-              <Select
-                label="Motivo del envío (UAFE/SBS)"
-                value={remittanceReason}
-                onChange={(e) => setRemittanceReason(e.target.value)}
-              >
-                <option value="Ayuda Familiar / Remesa">Ayuda Familiar / Remesa</option>
-                <option value="Gastos Médicos / Salud">Gastos Médicos / Salud</option>
-                <option value="Pago Proveedor Comercial">Pago Proveedor Comercial</option>
-                <option value="Educación / Estudios">Educación / Estudios</option>
-                <option value="Compra de Bienes / Servicios">Compra de Bienes / Servicios</option>
-              </Select>
-              <Select
-                label="Origen de fondos"
-                value={sourceOfFunds}
-                onChange={(e) => setSourceOfFunds(e.target.value)}
-              >
-                <option value="Sueldo/Honorarios">Sueldo / Honorarios</option>
-                <option value="Ahorros">Ahorros Personales</option>
-                <option value="Actividad Comercial">Actividad Comercial / Ventas</option>
-                <option value="Venta de Inmueble/Vehiculo">Venta de Inmueble / Vehículo</option>
-                <option value="Prestamo">Préstamo Bancario / Personal</option>
-              </Select>
-            </div>
-
-            {paymentMethod === "CASH" && (
-              <div className="grid grid-cols-2 gap-3 border-t border-dashed pt-3">
-                <Input
-                  label="Efectivo recibido del cliente"
-                  type="number"
-                  step="0.01"
-                  value={cashAmountReceived}
-                  onChange={(e) => setCashAmountReceived(e.target.value)}
-                  placeholder={sendAmount}
-                />
-                <div className="flex flex-col justify-end">
-                  <div className="rounded-lg bg-slate-100 p-2 text-sm">
-                    <span className="text-xs text-slate-500 block">Vuelto / Cambio a entregar:</span>
-                    <span className="font-bold text-slate-900 text-base">{fmtMoney(changeDue, corridor?.fromCurrency ?? "USD")}</span>
-                  </div>
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider block">
+                    Valor transformado a entregar ({corridor?.toCurrency ?? "PEN"})
+                  </span>
+                  <span className="text-xs text-emerald-600">
+                    Tasa de cambio: 1 {corridor?.fromCurrency ?? "USD"} = {corridor?.fxRates?.[0]?.sellRate ?? "3.49008"} {corridor?.toCurrency ?? "PEN"}
+                  </span>
+                </div>
+                <div className="text-xl font-extrabold text-emerald-900 font-mono">
+                  {fmtMoney((Number(sendAmount) || 0) * Number(corridor?.fxRates?.[0]?.sellRate || 3.49008), corridor?.toCurrency ?? "PEN")}
                 </div>
               </div>
-            )}
+            </div>
 
             <Input
               label="Series de billetes de alta denominación ($50/$100) — Opcional"
@@ -702,16 +834,7 @@ export default function NewTransferPage() {
               placeholder="Ej: B293810, C928102"
             />
 
-            <Input
-              label={`Monto a enviar (${corridor?.fromCurrency ?? "USD"})`}
-              type="number"
-              min="1"
-              step="0.01"
-              value={sendAmount}
-              onChange={(e) => setSendAmount(e.target.value)}
-            />
-
-            <Button onClick={() => loadQuote(Number(sendAmount))} loading={loading} className="w-full">
+            <Button onClick={() => loadQuote(Number(sendAmount))} loading={loading} className="w-full text-base py-3 font-bold">
               Cotizar y Continuar al Resumen
             </Button>
           </div>
@@ -739,8 +862,8 @@ export default function NewTransferPage() {
               Comisión de giro: {fmtMoney(quote.feeAmount, quote.sendCurrency)} · Tipo de cambio: {quote.fxRate}
             </div>
             <Alert kind="info">
-              Pago recibido en {paymentMethod === "CASH" ? "efectivo en ventanilla" : "transferencia"}{" "}
-              · Retiro en Perú {payoutMethod === "CASH" ? "en efectivo mediante código" : "a cuenta bancaria"} por{" "}
+              Pago recibido en {paymentMethod === "CASH" ? "efectivo en ventanilla" : "transferencia bancaria"}{" "}
+              · Retiro en Perú {payoutMethod === "CASH" ? "en efectivo mediante código" : payoutMethod === "MOBILE_WALLET" ? "por Yape al teléfono móvil" : "por depósito a cuenta bancaria"} para{" "}
               {beneficiaries.find((b) => b.id === beneficiaryId)?.fullName}.
             </Alert>
             <div className="flex gap-3">

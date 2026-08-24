@@ -2,8 +2,22 @@
 
 import type { AuthUser } from "./types";
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api";
+export function getApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    const isHttps = window.location.protocol === "https:";
+    if (host.endsWith(".trycloudflare.com") || isHttps) {
+      return "https://wave-smart-hist-bull.trycloudflare.com/api";
+    }
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return `http://${host}:3000/api`;
+    }
+  }
+  return "http://localhost:3000/api";
+}
+
+export const API_URL = getApiUrl();
 
 export const TOKEN_KEY = "divisas_token";
 export const USER_KEY = "divisas_user";
@@ -84,7 +98,8 @@ export async function api<T>(
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const baseUrl = getApiUrl();
+  const res = await fetch(`${baseUrl}${path}`, { ...options, headers });
   return handle<T>(res);
 }
 

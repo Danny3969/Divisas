@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCustomerDto, ApproveKycDto } from './dto/customer.dto';
+import { CreateCustomerDto, ApproveKycDto, UpdateCustomerDto } from './dto/customer.dto';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../common/current-user.decorator';
 import { AuditAction, Role } from '@prisma/client';
@@ -19,7 +19,7 @@ export class CustomersService {
     const customer = await this.prisma.customer.create({
       data: {
         ...dto,
-        kycStatus: 'PENDING',
+        kycStatus: 'APPROVED',
       },
     });
     await this.audit.record({
@@ -84,6 +84,36 @@ export class CustomersService {
       this.prisma.customer.count({ where }),
     ]);
     return { items, total, page, limit };
+  }
+
+  async update(id: string, dto: UpdateCustomerDto, actor: AuthUser) {
+    const customer = await this.findOne(id);
+    const updated = await this.prisma.customer.update({
+      where: { id },
+      data: dto,
+    });
+    await this.audit.record({
+      actor,
+      action: AuditAction.UPDATE,
+      entity: 'Customer',
+      entityId: id,
+      before: { fullName: customer.fullName, phone: customer.phone },
+      after: { fullName: updated.fullName, phone: updated.phone },
+    });
+    return updated;
+  }
+
+  async delete(id: string, actor: AuthUser) {
+    const customer = await this.findOne(id);
+    await this.prisma.customer.delete({ where: { id } });
+    await this.audit.record({
+      actor,
+      action: AuditAction.DELETE,
+      entity: 'Customer',
+      entityId: id,
+      before: { fullName: customer.fullName, documentNumber: customer.documentNumber },
+    });
+    return { success: true, message: 'Cliente eliminado correctamente' };
   }
 
   async approveKyc(id: string, dto: ApproveKycDto, actor: AuthUser) {

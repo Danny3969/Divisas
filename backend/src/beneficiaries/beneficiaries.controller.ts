@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser, AuthUser } from '../common/current-user.decorator';
 import { BeneficiariesService } from './beneficiaries.service';
-import { CreateBeneficiaryDto, CreateBeneficiaryAccountDto } from './dto/beneficiary.dto';
+import { CreateBeneficiaryDto, CreateBeneficiaryAccountDto, UpdateBeneficiaryDto } from './dto/beneficiary.dto';
 import { Role } from '@prisma/client';
 
 @Controller('beneficiaries')
@@ -34,5 +34,17 @@ export class BeneficiariesController {
   @Roles(Role.CASHIER, Role.SUPERVISOR, Role.COMPLIANCE, Role.ADMIN, Role.AUDITOR)
   list(@Query('search') search?: string) {
     return this.service.list({ search });
+  }
+
+  @Patch(':id')
+  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.ADMIN)
+  update(@Param('id') id: string, @Body() dto: UpdateBeneficiaryDto, @CurrentUser() user: AuthUser) {
+    return this.service.update(id, dto, user);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.SUPERVISOR)
+  delete(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.service.delete(id, user);
   }
 }

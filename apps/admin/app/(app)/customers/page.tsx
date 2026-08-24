@@ -11,8 +11,8 @@ import {
   Select,
   Spinner,
 } from "@/components/ui";
-import { get, post } from "@/lib/api";
-import { fmtDate } from "@/lib/format";
+import { del, get, patch, post } from "@/lib/api";
+import { fmtDate, fmtPhone, normalizePhone } from "@/lib/format";
 import type { Customer, ListResponse } from "@/lib/types";
 
 interface DocumentItem {
@@ -31,7 +31,7 @@ export default function CustomersPage() {
   const [data, setData] = useState<ListResponse<Customer> | null>(null);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
-  const [kycFilter, setKycFilter] = useState("PENDING");
+  const [kycFilter, setKycFilter] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
@@ -40,6 +40,19 @@ export default function CustomersPage() {
 
   // Modal de Expediente KYC
   const [selectedCustomer, setSelectedCustomer] = useState<DetailedCustomer | null>(null);
+
+  // Modal de Edición
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editForm, setEditForm] = useState({
+    fullName: "",
+    documentType: "CEDULA",
+    documentNumber: "",
+    email: "",
+    phone: "",
+  });
+
+  // Modal de Eliminación
+  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,6 +82,55 @@ export default function CustomersPage() {
     }
   };
 
+  const openEditModal = (c: Customer) => {
+    setEditingCustomer(c);
+    setEditForm({
+      fullName: c.fullName,
+      documentType: c.documentType,
+      documentNumber: c.documentNumber,
+      email: c.email || "",
+      phone: c.phone || "",
+    });
+  };
+
+  const saveCustomerEdit = async () => {
+    if (!editingCustomer) return;
+    setWorking(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const formattedPhone = normalizePhone(editForm.phone, editingCustomer.country?.code);
+      await patch(`/customers/${editingCustomer.id}`, {
+        ...editForm,
+        phone: formattedPhone || undefined,
+      });
+      setSuccess("✅ Datos del cliente actualizados correctamente.");
+      setEditingCustomer(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al actualizar el cliente.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const confirmDeleteCustomer = async () => {
+    if (!deletingCustomer) return;
+    setWorking(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await del(`/customers/${deletingCustomer.id}`);
+      setSuccess(`🗑️ Cliente "${deletingCustomer.fullName}" eliminado correctamente.`);
+      setDeletingCustomer(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al eliminar el cliente.");
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const processKycDecision = async (id: string, decision: "APPROVE" | "REJECT") => {
     setWorking(true);
     setError(null);
@@ -92,7 +154,7 @@ export default function CustomersPage() {
   const getKycBadge = (status: string) => {
     switch (status) {
       case "APPROVED":
-        return <Badge className="bg-emerald-100 text-emerald-800 font-bold">🟢 Aprobado</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-800 font-bold">🟢 Aprobado / Registrado</Badge>;
       case "REJECTED":
         return <Badge className="bg-red-100 text-red-800 font-bold">🔴 Rechazado</Badge>;
       default:
@@ -105,10 +167,10 @@ export default function CustomersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900">
-            Gestión y Verificación de Clientes (KYC / Compliance)
+            Gestión de Clientes (Remitentes)
           </h1>
           <p className="text-xs text-slate-500">
-            Aprobación de identidad, revisión de documentos de cédula/DNI y activación de cuentas.
+            Consulta, edición, eliminación y verificación de expedientes KYC.
           </p>
         </div>
       </div>
@@ -119,10 +181,10 @@ export default function CustomersPage() {
       {/* Tabs rápidos por Estado KYC */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
         {[
-          { label: "⏳ Pendientes de Revisión", value: "PENDING" },
-          { label: "✅ Clientes Aprobados", value: "APPROVED" },
-          { label: "❌ Rechazados", value: "REJECTED" },
           { label: "📋 Todos los Clientes", value: "" },
+          { label: "✅ Registrados / Aprobados", value: "APPROVED" },
+          { label: "⏳ Pendientes de Revisión", value: "PENDING" },
+          { label: "❌ Rechazados", value: "REJECTED" },
         ].map((tab) => (
           <button
             key={tab.value}
@@ -195,27 +257,33 @@ export default function CustomersPage() {
                       </span>
                     </td>
                     <td className="py-3 text-slate-600 text-xs">
-                      <div>📱 {c.phone ?? "Sin teléfono"}</div>
+                      <div>📱 {fmtPhone(c.phone, c.country?.code)}</div>
                       <div className="text-slate-400">{c.country?.name ?? "Ecuador / Perú"}</div>
                     </td>
                     <td className="py-3">{getKycBadge(c.kycStatus)}</td>
                     <td className="py-3 text-xs text-slate-500">{c.createdAt ? fmtDate(c.createdAt) : "—"}</td>
-                    <td className="py-3 text-right space-x-2">
+                    <td className="py-3 text-right space-x-1">
                       <Button
                         variant="secondary"
-                        className="text-xs px-3 py-1 font-bold"
+                        className="text-xs px-2 py-1 font-bold"
+                        onClick={() => openEditModal(c)}
+                      >
+                        ✏️ Editar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="text-xs px-2 py-1 font-bold text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setDeletingCustomer(c)}
+                      >
+                        🗑️ Eliminar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="text-xs px-2 py-1 font-bold"
                         onClick={() => openDossier(c)}
                       >
-                        📂 Ver Expediente KYC
+                        📂 KYC
                       </Button>
-                      {c.kycStatus === "PENDING" && (
-                        <Button
-                          className="text-xs px-3 py-1 bg-emerald-600 hover:bg-emerald-700 font-bold"
-                          onClick={() => processKycDecision(c.id, "APPROVE")}
-                        >
-                          ✅ Aprobar
-                        </Button>
-                      )}
                     </td>
                   </tr>
                 ))}
@@ -245,6 +313,85 @@ export default function CustomersPage() {
             </div>
           </div>
         </Card>
+      )}
+
+      {/* Modal de Edición de Cliente */}
+      {editingCustomer && (
+        <Modal
+          title={`✏️ Editar Cliente: ${editingCustomer.fullName}`}
+          open={!!editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+        >
+          <div className="space-y-4 max-w-lg">
+            <Input
+              label="Nombre Completo"
+              value={editForm.fullName}
+              onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Select
+                label="Tipo de Documento"
+                value={editForm.documentType}
+                onChange={(e) => setEditForm({ ...editForm, documentType: e.target.value as any })}
+              >
+                <option value="CEDULA">Cédula</option>
+                <option value="RUC">RUC</option>
+                <option value="DNI">DNI</option>
+                <option value="PASSPORT">Pasaporte</option>
+              </Select>
+              <Input
+                label="Número de Documento"
+                value={editForm.documentNumber}
+                onChange={(e) => setEditForm({ ...editForm, documentNumber: e.target.value })}
+              />
+            </div>
+            <Input
+              label="Teléfono / WhatsApp"
+              value={editForm.phone}
+              onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+            />
+            <Input
+              label="Correo Electrónico (Opcional)"
+              value={editForm.email}
+              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+            />
+
+            <div className="pt-3 border-t flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setEditingCustomer(null)}>
+                Cancelar
+              </Button>
+              <Button onClick={saveCustomerEdit} loading={working}>
+                Guardar Cambios
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {deletingCustomer && (
+        <Modal
+          title={`🗑️ Confirmar Eliminación de Cliente`}
+          open={!!deletingCustomer}
+          onClose={() => setDeletingCustomer(null)}
+        >
+          <div className="space-y-4 max-w-md">
+            <p className="text-sm text-slate-700">
+              ¿Estás seguro de que deseas eliminar al cliente <strong className="text-slate-900">{deletingCustomer.fullName}</strong> ({deletingCustomer.documentType} {deletingCustomer.documentNumber})?
+            </p>
+            <p className="text-xs text-amber-700 bg-amber-50 p-3 rounded border border-amber-200">
+              ⚠️ Esta acción eliminará el registro del cliente de la base de datos.
+            </p>
+            <div className="pt-3 border-t flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeletingCustomer(null)}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={confirmDeleteCustomer} loading={working}>
+                Sí, Eliminar Cliente
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Modal de Expediente KYC del Cliente */}
