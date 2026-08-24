@@ -101,7 +101,19 @@ npx pm2 logs                         # Ver logs en tiempo real
   - Restablecer contraseña individual.
 - [x] Sección **Contabilidad** con panel interactivo de 7 pestañas.
 
+## 🏛️ Identidad de Marca Oficial — VALEX
+- **Nombre Seleccionado:** **VALEX** *(Valor + Exchange)*
+- **Eslogan:** *Tu dinero con más valor.*
+- **Isotipo Oficial:** *Dynamic Exchange X* (Flechas dinámicas de intercambio transfronterizo).
+- **Tipografía Oficial:** Fuente geométrica sans-serif moderna con cortes tecnológicos en **A** y **E**.
+- **Manual de Marca & Assets:** [`docs/branding/MANUAL_DE_MARCA_VALEX.md`](docs/branding/MANUAL_DE_MARCA_VALEX.md)
+  - Carpeta de activos visuales y mockups en alta resolución: `docs/branding/assets/`
+- **Tareas Pendientes:**
+  - [ ] Selección final de la paleta oficial (Aurora Fintech / Gold Prestige / Hyper Clean / Cobalt Caribbean).
+  - [ ] Rebranding en el código (Admin, Cashier, Mobile APK `com.valex.app`).
+
 ## 📝 Notas Técnicas
 - **Normalización de teléfonos:** `normalizePhone()` en `lib/format.ts` (cashier y admin)
 - **Presentación de teléfonos:** `fmtPhone()` en `lib/format.ts`
 - **Proxy transparente:** Peticiones `/api/*` reenviadas internamente al backend.
+
