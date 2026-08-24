@@ -49,9 +49,17 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Consola de Administración (Admin):** https://volume-dialogue-down-stop.trycloudflare.com
 - **Consola de Caja (Cashier):** https://campaign-gloves-entitled-parks.trycloudflare.com
 - **Backend API:** https://solved-loud-rating-belly.trycloudflare.com/api
+- **Descarga Directa APK Móvil (Android):** https://volume-dialogue-down-stop.trycloudflare.com/downloads/Divisas.apk
+
+## 📱 Aplicación Móvil Android (APK)
+- **Ruta Local del APK:** `/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/aplicaciones/mobile/Divisas-v1.0.0.apk`
+- **Descarga Web:** `http://localhost:3001/downloads/Divisas.apk`
+- **Tamaño:** 103 MB
+- **Configuración:** Conectado a la API pública / local para envíos de giros, registro de clientes, cotizaciones y seguimiento de transacciones.
 
 > Para consultar URLs si se reinician los túneles:
 > `grep "trycloudflare.com" ~/.pm2/logs/divisas-tunnel-admin-error.log | tail -n 1`
+
 
 ## 🚀 Funcionalidades Implementadas
 

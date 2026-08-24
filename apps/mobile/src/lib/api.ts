@@ -2,7 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { AuthUser } from "./types";
 
 export const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
+  process.env.EXPO_PUBLIC_API_URL ||
+  "https://solved-loud-rating-belly.trycloudflare.com/api";
 
 export const TOKEN_KEY = "divisas_token";
 export const USER_KEY = "divisas_user";

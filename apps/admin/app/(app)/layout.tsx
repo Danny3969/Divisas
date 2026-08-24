@@ -48,6 +48,16 @@ function Sidebar() {
           );
         })}
       </nav>
+      <div className="px-3 pb-2">
+        <a
+          href="/downloads/Divisas.apk"
+          download="Divisas.apk"
+          className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold border border-emerald-200 transition-colors"
+        >
+          <span>📱</span>
+          <span>Descargar APK Android</span>
+        </a>
+      </div>
       <div className="border-t border-slate-200 p-4">
         <div className="text-sm font-semibold text-slate-800">
           {user?.fullName}
