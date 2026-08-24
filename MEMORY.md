@@ -86,6 +86,11 @@ npx pm2 logs                         # Ver logs en tiempo real
 ### Consola de Administración (`apps/admin`)
 - [x] Clientes: CRUD completo.
 - [x] Sección **Beneficiarios**: lista, búsqueda, editar, eliminar.
+- [x] Sección **Usuarios y Accesos**:
+  - Crear nuevo usuario con nombre, correo, teléfono, rol y asignación de agencia.
+  - Editar datos de usuario, roles, asignación de oficina y estado activo/inactivo.
+  - Eliminar usuarios con confirmación y protección de cuenta superadmin.
+  - Restablecer contraseña individual.
 - [x] Sección **Contabilidad** con panel interactivo de 7 pestañas.
 
 ## 📝 Notas Técnicas

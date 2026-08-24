@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -34,6 +34,12 @@ export class AdminController {
   @Roles(Role.ADMIN)
   updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: AuthUser) {
     return this.service.updateUser(id, dto, user);
+  }
+
+  @Delete('users/:id')
+  @Roles(Role.ADMIN)
+  deleteUser(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.service.deleteUser(id, user);
   }
 
   @Post('users/:id/reset-password')

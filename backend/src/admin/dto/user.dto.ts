@@ -23,8 +23,16 @@ export class CreateUserDto {
 
 export class UpdateUserDto {
   @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
   @IsString()
   fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
 
   @IsOptional()
   @IsEnum(Role)

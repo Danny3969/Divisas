@@ -7,10 +7,11 @@ import {
   Button,
   Card,
   Input,
+  Modal,
   Select,
   Spinner,
 } from "@/components/ui";
-import { get, patch, post } from "@/lib/api";
+import { get, patch, post, del, getSessionUser } from "@/lib/api";
 import { fmtDate, ROLE_LABELS } from "@/lib/format";
 import type { Office } from "@/lib/types";
 
@@ -18,6 +19,7 @@ interface UserItem {
   id: string;
   email: string;
   fullName: string;
+  phone?: string | null;
   role: string;
   officeId?: string | null;
   office?: { id: string; name: string; country: { code: string; name: string } } | null;
@@ -32,17 +34,24 @@ export default function UsersPage() {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const currentUser = getSessionUser();
 
-  // Modal crear usuario
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState("CASHIER");
-  const [officeId, setOfficeId] = useState("");
+  // Modal crear / editar usuario
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [userForm, setUserForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    password: "",
+    role: "CASHIER",
+    officeId: "",
+    active: true,
+  });
 
   // Modal reset password
   const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [resetUserFullName, setResetUserFullName] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   const loadData = async () => {
@@ -53,7 +62,6 @@ export default function UsersPage() {
       ]);
       setUsers(uList);
       setOffices(oList);
-      if (oList.length > 0 && !officeId) setOfficeId(oList[0].id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar usuarios");
     } finally {
@@ -65,27 +73,101 @@ export default function UsersPage() {
     loadData();
   }, []);
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const openCreateModal = () => {
+    setEditingUserId(null);
+    setUserForm({
+      fullName: "",
+      email: "",
+      phone: "",
+      password: "",
+      role: "CASHIER",
+      officeId: offices.length > 0 ? offices[0].id : "",
+      active: true,
+    });
+    setShowUserModal(true);
+  };
+
+  const openEditModal = (u: UserItem) => {
+    setEditingUserId(u.id);
+    setUserForm({
+      fullName: u.fullName,
+      email: u.email,
+      phone: u.phone || "",
+      password: "",
+      role: u.role,
+      officeId: u.officeId || "",
+      active: u.active,
+    });
+    setShowUserModal(true);
+  };
+
+  const handleSubmitUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     setWorking(true);
     try {
-      await post("/admin/users", {
-        email,
-        password,
-        fullName,
-        role,
-        officeId: officeId || undefined,
-      });
-      setSuccess(`Usuario ${fullName} (${role}) creado con éxito.`);
-      setShowCreateModal(false);
-      setEmail("");
-      setPassword("");
-      setFullName("");
+      if (editingUserId) {
+        // Actualizar usuario existente
+        await patch(`/admin/users/${editingUserId}`, {
+          fullName: userForm.fullName,
+          email: userForm.email,
+          phone: userForm.phone || undefined,
+          role: userForm.role,
+          officeId: userForm.officeId || null,
+          active: userForm.active,
+        });
+        setSuccess(`Usuario ${userForm.fullName} actualizado exitosamente.`);
+      } else {
+        // Crear nuevo usuario
+        if (!userForm.password || userForm.password.length < 6) {
+          throw new Error("La contraseña debe tener al menos 6 caracteres.");
+        }
+        await post("/admin/users", {
+          fullName: userForm.fullName,
+          email: userForm.email,
+          phone: userForm.phone || undefined,
+          password: userForm.password,
+          role: userForm.role,
+          officeId: userForm.officeId || undefined,
+        });
+        setSuccess(`Usuario ${userForm.fullName} (${userForm.role}) creado exitosamente.`);
+      }
+      setShowUserModal(false);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear usuario");
+      setError(err instanceof Error ? err.message : "Error al procesar usuario");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const handleDeleteUser = async (u: UserItem) => {
+    if (u.email === "admin@divisas.com") {
+      alert("No se puede eliminar el usuario administrador principal del sistema.");
+      return;
+    }
+    if (currentUser && currentUser.userId === u.id) {
+      alert("No puedes eliminar tu propia cuenta en sesión activa.");
+      return;
+    }
+    if (
+      !confirm(
+        `¿Estás seguro de eliminar permanentemente al usuario ${u.fullName} (${u.email})?\n\nEsta acción no se puede deshacer.`
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setWorking(true);
+    try {
+      await del(`/admin/users/${u.id}`);
+      setSuccess(`Usuario ${u.fullName} eliminado exitosamente.`);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al eliminar usuario");
     } finally {
       setWorking(false);
     }
@@ -111,7 +193,7 @@ export default function UsersPage() {
     setWorking(true);
     try {
       await post(`/admin/users/${resetUserId}/reset-password`, { newPassword });
-      setSuccess("Contraseña restablecida con éxito.");
+      setSuccess(`Contraseña de ${resetUserFullName} restablecida con éxito.`);
       setResetUserId(null);
       setNewPassword("");
     } catch (err) {
@@ -121,40 +203,21 @@ export default function UsersPage() {
     }
   };
 
-  const handleResetDemoData = async () => {
-    if (
-      !confirm(
-        "⚠️ ATENCIÓN: ¿Está seguro de eliminar TODOS los giros, transacciones y sesiones de prueba ficticias?\n\nEsta acción dejará el sistema en $0.00 preparado para el registro de operaciones reales de producción."
-      )
-    )
-      return;
-
-    setError(null);
-    setSuccess(null);
-    setWorking(true);
-    try {
-      const res = await post<{ message: string }>("/admin/reset-demo-data", {});
-      setSuccess(res.message);
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al limpiar datos de prueba");
-    } finally {
-      setWorking(false);
-    }
-  };
-
   if (loading) return <Spinner />;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Gestión de Usuarios y Accesos</h1>
-          <p className="text-xs text-slate-500">
-            Administración de cuentas de cajeros, supervisores y administradores del sistema.
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">👥</span>
+            <h1 className="text-xl font-bold text-slate-900">Gestión de Usuarios y Accesos</h1>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Crea, edita roles, oficinas y credenciales de cajeros, supervisores y administradores.
           </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} variant="primary">
+        <Button onClick={openCreateModal} variant="primary" className="font-bold shadow-sm">
           ➕ Crear Nuevo Usuario
         </Button>
       </div>
@@ -165,54 +228,61 @@ export default function UsersPage() {
       <Card
         title="👥 Usuarios del Sistema Registrados"
         action={
-          <Badge className="bg-blue-100 text-blue-800">
-            {users.length} Usuarios Activos
+          <Badge className="bg-blue-100 text-blue-800 font-bold">
+            {users.length} Usuarios Registrados
           </Badge>
         }
       >
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs font-semibold text-slate-500">
-                <th className="py-3">Usuario / Nombre</th>
-                <th className="py-3">Correo Electrónico</th>
-                <th className="py-3">Rol de Acceso</th>
-                <th className="py-3">Agencia / Oficina</th>
-                <th className="py-3">Estado</th>
-                <th className="py-3 text-right">Acciones</th>
+              <tr className="border-b border-slate-200 text-left font-semibold text-slate-500 bg-slate-50">
+                <th className="py-3 px-3">Usuario / Nombre</th>
+                <th className="py-3 px-3">Correo Electrónico</th>
+                <th className="py-3 px-3">Rol de Acceso</th>
+                <th className="py-3 px-3">Agencia / Oficina</th>
+                <th className="py-3 px-3 text-center">Estado</th>
+                <th className="py-3 px-3 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="py-3 font-semibold text-slate-800">{u.fullName}</td>
-                  <td className="py-3 font-mono text-xs text-slate-600">{u.email}</td>
-                  <td className="py-3">
+                <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="py-3 px-3">
+                    <div className="font-bold text-slate-900">{u.fullName}</div>
+                    {u.phone && <div className="text-[10px] text-slate-400 font-mono">{u.phone}</div>}
+                  </td>
+                  <td className="py-3 px-3 font-mono text-slate-700">{u.email}</td>
+                  <td className="py-3 px-3">
                     <Badge
                       className={
                         u.role === "ADMIN"
-                          ? "bg-purple-100 text-purple-800"
+                          ? "bg-purple-100 text-purple-800 font-bold"
                           : u.role === "CASHIER"
-                          ? "bg-emerald-100 text-emerald-800"
+                          ? "bg-emerald-100 text-emerald-800 font-bold"
                           : u.role === "SUPERVISOR"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-blue-100 text-blue-800"
+                          ? "bg-amber-100 text-amber-800 font-bold"
+                          : "bg-blue-100 text-blue-800 font-bold"
                       }
                     >
                       {ROLE_LABELS[u.role] ?? u.role}
                     </Badge>
                   </td>
-                  <td className="py-3 text-xs text-slate-600">
+                  <td className="py-3 px-3 text-slate-700 font-medium">
                     {u.office
                       ? u.office.country?.code === "EC" || u.office.name.includes("Quito")
-                        ? "Ecuador"
+                        ? "🇪🇨 Ecuador"
                         : u.office.country?.code === "PE" || u.office.name.includes("Lima")
-                        ? "Perú"
+                        ? "🇵🇪 Perú"
                         : u.office.name
-                      : "Todas las agencias"}
+                      : "🌐 Todas las agencias (Global)"}
                   </td>
-                  <td className="py-3">
-                    <button onClick={() => handleToggleActive(u)}>
+                  <td className="py-3 px-3 text-center">
+                    <button
+                      onClick={() => handleToggleActive(u)}
+                      title="Clic para cambiar estado"
+                      className="cursor-pointer transition-transform active:scale-95"
+                    >
                       <Badge
                         className={
                           u.active
@@ -220,17 +290,37 @@ export default function UsersPage() {
                             : "bg-red-100 text-red-800 hover:bg-red-200"
                         }
                       >
-                        {u.active ? "Activo" : "Inactivo"}
+                        {u.active ? "● Activo" : "○ Inactivo"}
                       </Badge>
                     </button>
                   </td>
-                  <td className="py-3 text-right space-x-2">
+                  <td className="py-3 px-3 text-center space-x-2">
                     <button
-                      onClick={() => setResetUserId(u.id)}
-                      className="text-xs font-semibold text-blue-600 hover:underline"
+                      onClick={() => openEditModal(u)}
+                      className="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded"
                     >
-                      🔑 Reset Password
+                      ✏️ Editar
                     </button>
+                    <button
+                      onClick={() => {
+                        setResetUserId(u.id);
+                        setResetUserFullName(u.fullName);
+                        setNewPassword("");
+                      }}
+                      className="px-2 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded"
+                    >
+                      🔑 Password
+                    </button>
+                    {u.email !== "admin@divisas.com" && (
+                      <button
+                        onClick={() => handleDeleteUser(u)}
+                        disabled={working}
+                        className="px-2 py-1 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded"
+                        title="Eliminar usuario"
+                      >
+                        🗑️ Eliminar
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -239,132 +329,142 @@ export default function UsersPage() {
         </div>
       </Card>
 
-      <Card title="🧹 Limpieza de Datos Ficticios (Preparación para Operaciones Reales)">
-        <div className="space-y-3">
-          <p className="text-xs text-slate-600">
-            Utilice este botón si desea purgar las transacciones ficticias de prueba, cuentas de clientes de demostración y movimientos simulación, manteniendo intactas las agencias, bancos y roles para comenzar a registrar **operaciones reales de producción**.
-          </p>
-          <Button
-            variant="secondary"
-            className="border-red-500 text-red-700 hover:bg-red-50 font-bold"
-            onClick={handleResetDemoData}
-            loading={working}
-          >
-            🧹 Limpiar Datos Ficticios de Prueba
-          </Button>
-        </div>
-      </Card>
-
-      {/* Modal Crear Usuario */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Crear Nuevo Usuario del Sistema</h2>
-            <form onSubmit={handleCreateUser} className="space-y-3">
-              <Input
-                label="Nombre completo"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Ej: Laura Mendoza"
-                required
-              />
-              <Input
-                label="Correo electrónico (Login)"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="laura.mendoza@divisas.com"
-                required
-              />
-              <Input
-                label="Contraseña inicial"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-              <Select
-                label="Rol / Nivel de Acceso"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                <option value="CASHIER">Cajero / Operador de Ventanilla</option>
-                <option value="SUPERVISOR">Supervisor de Agencia</option>
-                <option value="ADMIN">Administrador / Superusuario</option>
-                <option value="TREASURY">Tesorero / Control FX</option>
-                <option value="COMPLIANCE">Oficial de Cumplimiento UAFE/SBS</option>
-                <option value="AUDITOR">Auditor</option>
-              </Select>
-              <Select
-                label="Agencia / Oficina Asignada"
-                value={officeId}
-                onChange={(e) => setOfficeId(e.target.value)}
-              >
-                <option value="">Todas las Oficinas (Global)</option>
-                {offices.map((o) => {
-                  const label =
-                    o.country?.code === "EC" || o.name.includes("Quito")
-                      ? "Ecuador"
-                      : o.country?.code === "PE" || o.name.includes("Lima")
-                      ? "Perú"
-                      : o.name;
-                  return (
-                    <option key={o.id} value={o.id}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </Select>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" loading={working} className="flex-1">
-                  Guardar Usuario
-                </Button>
-              </div>
-            </form>
+      {/* Modal Crear / Editar Usuario */}
+      <Modal
+        open={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        title={editingUserId ? "✏️ Editar Usuario del Sistema" : "➕ Crear Nuevo Usuario del Sistema"}
+      >
+        <form onSubmit={handleSubmitUser} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              label="Nombre Completo"
+              value={userForm.fullName}
+              onChange={(e) => setUserForm((f) => ({ ...f, fullName: e.target.value }))}
+              placeholder="Ej: Laura Mendoza"
+              required
+            />
+            <Input
+              label="Correo Electrónico (Login)"
+              type="email"
+              value={userForm.email}
+              onChange={(e) => setUserForm((f) => ({ ...f, email: e.target.value }))}
+              placeholder="laura.mendoza@divisas.com"
+              required
+            />
           </div>
-        </div>
-      )}
 
-      {/* Modal Reset Password */}
-      {resetUserId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Restablecer Contraseña</h2>
-            <form onSubmit={handleResetPassword} className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              label="Teléfono / Celular (Opcional)"
+              value={userForm.phone}
+              onChange={(e) => setUserForm((f) => ({ ...f, phone: e.target.value }))}
+              placeholder="Ej: +593 999 123 456"
+            />
+            {!editingUserId ? (
               <Input
-                label="Nueva Contraseña"
+                label="Contraseña Inicial"
                 type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                value={userForm.password}
+                onChange={(e) => setUserForm((f) => ({ ...f, password: e.target.value }))}
                 placeholder="Mínimo 6 caracteres"
                 required
               />
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => setResetUserId(null)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" loading={working} className="flex-1">
-                  Actualizar
-                </Button>
-              </div>
-            </form>
+            ) : (
+              <Select
+                label="Estado del Usuario"
+                value={userForm.active ? "true" : "false"}
+                onChange={(e) => setUserForm((f) => ({ ...f, active: e.target.value === "true" }))}
+              >
+                <option value="true">● Activo (Permite acceso)</option>
+                <option value="false">○ Inactivo (Bloquear acceso)</option>
+              </Select>
+            )}
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Select
+              label="Rol / Nivel de Acceso"
+              value={userForm.role}
+              onChange={(e) => setUserForm((f) => ({ ...f, role: e.target.value }))}
+            >
+              <option value="CASHIER">Cajero / Operador de Ventanilla</option>
+              <option value="SUPERVISOR">Supervisor de Agencia</option>
+              <option value="ADMIN">Administrador / Superusuario</option>
+              <option value="TREASURY">Tesorero / Control FX</option>
+              <option value="COMPLIANCE">Oficial de Cumplimiento UAFE/SBS</option>
+              <option value="AUDITOR">Auditor</option>
+              <option value="CUSTOMER">Cliente / Usuario Web</option>
+            </Select>
+
+            <Select
+              label="Agencia / Oficina Asignada"
+              value={userForm.officeId}
+              onChange={(e) => setUserForm((f) => ({ ...f, officeId: e.target.value }))}
+            >
+              <option value="">🌐 Todas las Oficinas (Acceso Global)</option>
+              {offices.map((o) => {
+                const label =
+                  o.country?.code === "EC" || o.name.includes("Quito")
+                    ? "🇪🇨 Ecuador"
+                    : o.country?.code === "PE" || o.name.includes("Lima")
+                    ? "🇵🇪 Perú"
+                    : o.name;
+                return (
+                  <option key={o.id} value={o.id}>
+                    {label}
+                  </option>
+                );
+              })}
+            </Select>
+          </div>
+
+          <div className="flex gap-2 pt-2 border-t border-slate-200">
+            <Button
+              type="button"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setShowUserModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" loading={working} className="flex-1 font-bold">
+              {editingUserId ? "💾 Guardar Cambios" : "➕ Crear Usuario"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Reset Password */}
+      <Modal
+        open={!!resetUserId}
+        onClose={() => setResetUserId(null)}
+        title={`🔑 Restablecer Contraseña — ${resetUserFullName}`}
+      >
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          <Input
+            label="Nueva Contraseña"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Mínimo 6 caracteres"
+            required
+          />
+          <div className="flex gap-2 pt-2 border-t border-slate-200">
+            <Button
+              type="button"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setResetUserId(null)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" loading={working} className="flex-1 font-bold">
+              Actualizar Contraseña
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

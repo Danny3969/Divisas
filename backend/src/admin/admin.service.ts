@@ -117,10 +117,17 @@ export class AdminService {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+      if (existing) throw new BadRequestException('Ya existe otro usuario con este correo electrónico');
+    }
+
     const updated = await this.prisma.user.update({
       where: { id },
       data: {
+        email: dto.email ?? user.email,
         fullName: dto.fullName ?? user.fullName,
+        phone: dto.phone !== undefined ? dto.phone : user.phone,
         role: dto.role ?? user.role,
         officeId: dto.officeId !== undefined ? dto.officeId : user.officeId,
         active: dto.active !== undefined ? dto.active : user.active,
@@ -129,6 +136,7 @@ export class AdminService {
         id: true,
         email: true,
         fullName: true,
+        phone: true,
         role: true,
         officeId: true,
         active: true,
@@ -140,11 +148,71 @@ export class AdminService {
       action: AuditAction.UPDATE,
       entity: 'User',
       entityId: id,
-      before: { role: user.role, active: user.active },
-      after: { role: updated.role, active: updated.active },
+      before: { role: user.role, active: user.active, email: user.email, fullName: user.fullName },
+      after: { role: updated.role, active: updated.active, email: updated.email, fullName: updated.fullName },
     });
 
     return updated;
+  }
+
+  async deleteUser(id: string, actor: AuthUser) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    if (user.id === actor.userId) {
+      throw new BadRequestException('No puedes eliminar tu propia cuenta de administrador en sesión');
+    }
+
+    if (user.email === 'admin@divisas.com') {
+      throw new BadRequestException('No se puede eliminar el administrador principal del sistema');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Desvincular customer si existe
+      await tx.customer.updateMany({
+        where: { userId: id },
+        data: { userId: null },
+      });
+
+      // Eliminar logs de auditoría del usuario a eliminar
+      await tx.auditLog.deleteMany({
+        where: { actorId: id },
+      });
+
+      // Desvincular creador en otras tablas
+      await tx.expense.updateMany({
+        where: { createdById: id },
+        data: { createdById: null },
+      });
+      await tx.accountTransfer.updateMany({
+        where: { createdById: id },
+        data: { createdById: null },
+      });
+      await tx.capitalMovement.updateMany({
+        where: { createdById: id },
+        data: { createdById: null },
+      });
+      await tx.payrollPayment.updateMany({
+        where: { createdById: id },
+        data: { createdById: null },
+      });
+      await tx.cashMovement.updateMany({
+        where: { performedById: id },
+        data: { performedById: null },
+      });
+
+      await tx.user.delete({ where: { id } });
+
+      await this.audit.record({
+        actor,
+        action: AuditAction.DELETE,
+        entity: 'User',
+        entityId: id,
+        before: { email: user.email, fullName: user.fullName, role: user.role },
+      });
+
+      return { success: true, message: `Usuario ${user.fullName} eliminado exitosamente.` };
+    });
   }
 
   async resetUserPassword(id: string, newPassword: string, actor: AuthUser) {
