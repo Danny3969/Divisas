@@ -7,7 +7,7 @@ _Última actualización: 2026-08-24_
 
 ## 🏗️ Estructura del Proyecto
 ```
-/Users/digitalspace/Desktop/Divisas/
+/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/
 ├── backend/          → NestJS + Prisma + PostgreSQL (puerto 3000)
 ├── apps/
 │   ├── admin/        → Next.js Consola Administración (puerto 3001)
@@ -17,7 +17,7 @@ _Última actualización: 2026-08-24_
 ```
 
 ## 🗄️ Base de Datos
-- **PostgreSQL** en `localhost:5433`
+- **PostgreSQL 16** (Docker Compose) en `localhost:5433`
 - **Usuario:** `divisas` | **Password:** `divisas_dev` | **DB:** `divisas`
 - **ORM:** Prisma
 
@@ -28,6 +28,7 @@ _Última actualización: 2026-08-24_
 | `cajero.pe@divisas.com` | `Divisas2026!` | CASHIER | 🇵🇪 Perú |
 | `cajero.ec@divisas.com` | `Divisas2026!` | CASHIER | 🇪🇨 Ecuador |
 | `supervisor@divisas.com` | `Divisas2026!` | SUPERVISOR | — |
+| `compliance@divisas.com` | `Divisas2026!` | COMPLIANCE | — |
 
 ## ⚙️ PM2 — Gestión de Procesos
 ```bash
@@ -44,42 +45,40 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Admin:** http://localhost:3001
 - **Caja:** http://localhost:3002
 
-## 🌍 URLs Públicas (Cloudflare — cambian al reiniciar tunnels)
-> Ver logs con: `tail -20 ~/.pm2/logs/divisas-tunnel-XXX-error.log | grep "INF |"`
+## 🌍 URLs Públicas Activas (Cloudflare Tunnels)
+- **Consola de Administración (Admin):** https://providence-typing-only-pix.trycloudflare.com
+- **Consola de Caja (Cashier):** https://market-cms-cohen-pointed.trycloudflare.com
+- **Backend API:** https://marshall-critical-dover-tribes.trycloudflare.com/api
 
-## 🚀 Funcionalidades Implementadas
+> Para consultar URLs si se reinician los túneles:
+> `grep -E -o "https://[a-zA-Z0-9-]+\.trycloudflare\.com" ~/.pm2/logs/divisas-tunnel-*.log | sort -u`
 
-### Consola de Caja (apps/cashier)
-- [x] Nueva Transferencia con 3 métodos: **Efectivo**, **Yape**, **Cuenta Bancaria**
-- [x] Formulario Yape: solo número de teléfono
-- [x] Formulario Banco: datos completos de cuenta
-- [x] Efectivo recibido = monto convertido a moneda local
-- [x] **Identificación visual por país:**
-  - 🇵🇪 `cajero.pe` → Header **rojo** → "Caja Perú"
-  - 🇪🇨 `cajero.ec` → Header **amarillo** → "Caja Ecuador"
-- [x] Prefijos de teléfono automáticos: +51 Perú / +593 Ecuador
-- [x] Registro de clientes auto-aprobados (sin verificación manual)
-- [x] Formulario de beneficiarios con selección de tipo de retiro
-
-### Consola de Administración (apps/admin)
-- [x] Clientes: botones ✏️ Editar y 🗑️ Eliminar
-- [x] Registro de clientes sin verificación (auto-APPROVED)
-- [x] Nueva sección **Beneficiarios**: lista, búsqueda, editar, eliminar
-- [x] Sidebar con link a Beneficiarios
-- [x] Teléfonos con prefijo de país en tablas (fmtPhone)
+## 🚀 Funcionalidades y Correcciones Implementadas
 
 ### Backend (backend/src)
-- [x] Auth: `login` devuelve `office.country` para identificar caja
-- [x] Customers: KYC auto-aprobado al crear
-- [x] Beneficiaries: CRUD completo con búsqueda por nombre/documento/teléfono
-- [x] Soporte de teléfonos con prefijo internacional
+- [x] Contenedor Docker PostgreSQL iniciado y sincronizado (`prisma db push`).
+- [x] Corrección en `prisma/seed.ts` para actualización consistente de contraseñas y unicidad de cuentas bancarias.
+- [x] Auth: `login` devuelve `office.country` para identificar caja.
+- [x] Customers: KYC auto-aprobado al crear.
+- [x] Beneficiaries: CRUD completo con búsqueda por nombre/documento/teléfono.
+- [x] Soporte de teléfonos con prefijo internacional.
+
+### Consola de Caja (apps/cashier)
+- [x] Proxy de API integrado en `next.config.ts` (evita problemas de CORS y URLs caducadas).
+- [x] Nueva Transferencia con 3 métodos: **Efectivo**, **Yape**, **Cuenta Bancaria**.
+- [x] Identificación visual por país (🇵🇪 Rojo / 🇪🇨 Amarillo).
+- [x] Prefijos de teléfono automáticos (+51 / +593).
+
+### Consola de Administración (apps/admin)
+- [x] Proxy de API integrado en `next.config.ts`.
+- [x] Clientes: botones Editar y Eliminar.
+- [x] Sección **Beneficiarios**: lista, búsqueda, editar, eliminar.
 
 ### Infraestructura
-- [x] PM2 `ecosystem.config.js` configurado con auto-restart
-- [x] Tunnels Cloudflare para acceso público desde internet
+- [x] Instalación de `cloudflared` en el sistema y configuración en PM2.
+- [x] Configuración dinámica en `next.config.ts` para enrutamiento transparente local y público.
 
 ## 📝 Notas Técnicas
 - **Normalización de teléfonos:** `normalizePhone()` en `lib/format.ts` (cashier y admin)
 - **Presentación de teléfonos:** `fmtPhone()` en `lib/format.ts`
-- **Los tunnels Cloudflare cambian URL al reiniciar** — son gratuitos/temporales
-- **Para URLs permanentes:** configurar dominio propio en Cloudflare (pendiente)
+- **Proxy transparente:** Tanto la consola de admin como la de caja reenvián peticiones `/api/*` al backend automáticamente sin depender de URLs de Cloudflare quemadas en el código cliente.

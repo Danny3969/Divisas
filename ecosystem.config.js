@@ -7,7 +7,7 @@ module.exports = {
       args: "run start:dev",
       interpreter: "none",
       autorestart: true,
-      watch: false
+      watch: false,
     },
     {
       name: "divisas-admin",
@@ -18,8 +18,8 @@ module.exports = {
       autorestart: true,
       watch: false,
       env: {
-        NEXT_PUBLIC_API_URL: "https://tear-paxil-considered-foo.trycloudflare.com/api"
-      }
+        BACKEND_INTERNAL_URL: "http://127.0.0.1:3000",
+      },
     },
     {
       name: "divisas-cashier",
@@ -30,32 +30,32 @@ module.exports = {
       autorestart: true,
       watch: false,
       env: {
-        NEXT_PUBLIC_API_URL: "https://tear-paxil-considered-foo.trycloudflare.com/api"
-      }
+        BACKEND_INTERNAL_URL: "http://127.0.0.1:3000",
+      },
     },
     {
       name: "divisas-tunnel-backend",
-      script: "/usr/local/bin/cloudflared",
+      script: "cloudflared",
       args: "tunnel --url http://localhost:3000",
       interpreter: "none",
       autorestart: true,
-      watch: false
+      watch: false,
     },
     {
       name: "divisas-tunnel-admin",
-      script: "/usr/local/bin/cloudflared",
+      script: "cloudflared",
       args: "tunnel --url http://localhost:3001",
       interpreter: "none",
       autorestart: true,
-      watch: false
+      watch: false,
     },
     {
       name: "divisas-tunnel-cashier",
-      script: "/usr/local/bin/cloudflared",
+      script: "cloudflared",
       args: "tunnel --url http://localhost:3002",
       interpreter: "none",
       autorestart: true,
-      watch: false
-    }
-  ]
+      watch: false,
+    },
+  ],
 };

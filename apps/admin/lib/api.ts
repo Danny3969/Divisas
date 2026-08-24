@@ -5,16 +5,11 @@ import type { AuthUser } from "./types";
 export function getApiUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    const isHttps = window.location.protocol === "https:";
-    if (host.endsWith(".trycloudflare.com") || isHttps) {
-      return "https://wave-smart-hist-bull.trycloudflare.com/api";
-    }
-    if (host !== "localhost" && host !== "127.0.0.1") {
-      return `http://${host}:3000/api`;
-    }
+    return "/api";
   }
-  return "http://localhost:3000/api";
+  return process.env.BACKEND_INTERNAL_URL
+    ? `${process.env.BACKEND_INTERNAL_URL}/api`
+    : "http://127.0.0.1:3000/api";
 }
 
 export const API_URL = getApiUrl();

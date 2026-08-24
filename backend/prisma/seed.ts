@@ -95,7 +95,7 @@ async function main() {
 
   // 6. Cuentas bancarias oficiales de la empresa
   await prisma.bankAccount.upsert({
-    where: { accountNumber: 'EC-PICHINCHA-USD' },
+    where: { accountNumber: '2100123456' },
     update: {},
     create: {
       bankName: 'Banco Pichincha',
@@ -108,7 +108,7 @@ async function main() {
     },
   });
   await prisma.bankAccount.upsert({
-    where: { accountNumber: 'EC-GUAYAQUIL-USD' },
+    where: { accountNumber: '1100987654' },
     update: {},
     create: {
       bankName: 'Banco Guayaquil',
@@ -121,7 +121,7 @@ async function main() {
     },
   });
   await prisma.bankAccount.upsert({
-    where: { accountNumber: 'PE-BCP-PEN' },
+    where: { accountNumber: '191-98765432-0-12' },
     update: {},
     create: {
       bankName: 'BCP Banco de Crédito del Perú',
@@ -168,8 +168,19 @@ async function main() {
   for (const u of users) {
     await prisma.user.upsert({
       where: { email: u.email },
-      update: {},
-      create: { email: u.email, passwordHash, fullName: u.fullName, role: u.role, officeId: (u as any).officeId },
+      update: {
+        passwordHash,
+        fullName: u.fullName,
+        role: u.role,
+        officeId: (u as any).officeId,
+      },
+      create: {
+        email: u.email,
+        passwordHash,
+        fullName: u.fullName,
+        role: u.role,
+        officeId: (u as any).officeId,
+      },
     });
   }
 
