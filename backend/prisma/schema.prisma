@@ -219,6 +219,9 @@ model User {
   cashSessionsOpened CashSession[] @relation("SessionOpenedBy")
   cashSessionsClosed CashSession[] @relation("SessionClosedBy")
   cashMovements CashMovement[]
+  expensesCreated Expense[] @relation("ExpenseCreatedBy")
+  accountTransfersCreated AccountTransfer[] @relation("AccountTransferCreatedBy")
+  capitalMovementsCreated CapitalMovement[] @relation("CapitalMovementCreatedBy")
 }
 
 // ============ CLIENTES ============
@@ -506,11 +509,16 @@ model BankAccount {
   accountName   String
   accountNumber String   @unique
   currency      String
+  balance       Decimal  @default(0) @db.Decimal(18, 2)
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
 
-  country      Country          @relation(fields: [countryId], references: [id])
-  transactions BankTransaction[]
+  country          Country           @relation(fields: [countryId], references: [id])
+  transactions     BankTransaction[]
+  expenses         Expense[]
+  transfersFrom    AccountTransfer[] @relation("TransferFromBank")
+  transfersTo      AccountTransfer[] @relation("TransferToBank")
+  capitalMovements CapitalMovement[]
 }
 
 model BankTransaction {
@@ -537,9 +545,95 @@ model CashAccount {
   active                 Boolean  @default(true)
   createdAt              DateTime @default(now())
 
-  office    Office         @relation(fields: [officeId], references: [id])
-  movements CashMovement[]
-  sessions  CashSession[]
+  office           Office            @relation(fields: [officeId], references: [id])
+  movements        CashMovement[]
+  sessions         CashSession[]
+  expenses         Expense[]
+  transfersFrom    AccountTransfer[] @relation("TransferFromCash")
+  transfersTo      AccountTransfer[] @relation("TransferToCash")
+  capitalMovements CapitalMovement[]
+}
+
+// ============ GASTOS Y CONTABILIDAD FINANCIERA ============
+
+model Expense {
+  id                String   @id @default(uuid())
+  expenseNumber     String   @unique // EXP-202608-0001
+  category          String   // RENT | UTILITIES | PAYROLL | BANK_FEES | SOFTWARE_HOSTING | OFFICE_SUPPLIES | MARKETING | TAXES | OTHER
+  supplierName      String
+  supplierTaxId     String?  // RUC / DNI / CI
+  invoiceNumber     String?  // N° de Factura / Boleta / Comprobante
+  currency          String   // USD | PEN
+  subtotal          Decimal  @db.Decimal(18, 2)
+  taxRate           Decimal  @default(0) @db.Decimal(5, 2) // 15.00 o 18.00 o 0.00
+  taxAmount         Decimal  @default(0) @db.Decimal(18, 2)
+  total             Decimal  @db.Decimal(18, 2)
+  paymentSourceType String   // BANK | CASH
+  bankAccountId     String?
+  cashAccountId     String?
+  paidAt            DateTime @default(now())
+  receiptUrl        String?  // Archivo / Foto del comprobante (data URL)
+  notes             String?
+  entryGroupId      String?  // Referencia al asiento contable en LedgerEntry
+  createdById       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+  cashAccount CashAccount? @relation(fields: [cashAccountId], references: [id])
+  createdBy   User?        @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+
+  @@index([category])
+  @@index([paidAt])
+}
+
+model AccountTransfer {
+  id                String   @id @default(uuid())
+  transferNumber    String   @unique // TRF-202608-0001
+  fromType          String   // BANK | CASH
+  fromBankAccountId String?
+  fromCashAccountId String?
+  toType            String   // BANK | CASH
+  toBankAccountId   String?
+  toCashAccountId   String?
+  amount            Decimal  @db.Decimal(18, 2)
+  currency          String   // USD | PEN
+  reference         String?  // Comprobante / N° Operación bancaria
+  receiptUrl        String?  // Foto / comprobante
+  description       String?
+  transferredAt     DateTime @default(now())
+  createdById       String?
+  createdAt         DateTime @default(now())
+
+  fromBankAccount BankAccount? @relation("TransferFromBank", fields: [fromBankAccountId], references: [id])
+  fromCashAccount CashAccount? @relation("TransferFromCash", fields: [fromCashAccountId], references: [id])
+  toBankAccount   BankAccount? @relation("TransferToBank", fields: [toBankAccountId], references: [id])
+  toCashAccount   CashAccount? @relation("TransferToCash", fields: [toCashAccountId], references: [id])
+  createdBy       User?        @relation("AccountTransferCreatedBy", fields: [createdById], references: [id])
+
+  @@index([transferredAt])
+}
+
+model CapitalMovement {
+  id              String   @id @default(uuid())
+  movementNumber  String   @unique // CAP-202608-0001
+  type            String   // INJECTION | WITHDRAWAL
+  destinationType String   // BANK | CASH
+  bankAccountId   String?
+  cashAccountId   String?
+  amount          Decimal  @db.Decimal(18, 2)
+  currency        String   // USD | PEN
+  partnerName     String?  // Nombre del socio o aportante
+  concept         String?  // Concepto / Motivo
+  receiptUrl      String?  // Comprobante adjunto
+  createdById     String?
+  createdAt       DateTime @default(now())
+
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+  cashAccount CashAccount? @relation(fields: [cashAccountId], references: [id])
+  createdBy   User?        @relation("CapitalMovementCreatedBy", fields: [createdById], references: [id])
+
+  @@index([createdAt])
 }
 
 model CashMovement {

@@ -180,6 +180,8 @@ export interface LedgerEntry {
   accountId: string;
   side: "DEBIT" | "CREDIT";
   amount: string;
+  currency?: string;
+  entryGroup?: string;
   description?: string;
   transferId?: string;
   createdAt: string;
@@ -203,4 +205,128 @@ export interface Office {
   address?: string;
   country: { code: string; name: string };
   cashAccounts: CashAccount[];
+}
+
+export interface Expense {
+  id: string;
+  expenseNumber: string;
+  category: string;
+  supplierName: string;
+  supplierTaxId?: string;
+  invoiceNumber?: string;
+  currency: string;
+  subtotal: number | string;
+  taxRate: number | string;
+  taxAmount: number | string;
+  total: number | string;
+  paymentSourceType: "BANK" | "CASH";
+  bankAccountId?: string;
+  cashAccountId?: string;
+  paidAt: string;
+  receiptUrl?: string;
+  notes?: string;
+  entryGroupId?: string;
+  bankAccount?: { bankName: string; currency: string; accountNumber: string };
+  cashAccount?: { code: string; currency: string };
+  createdBy?: { fullName: string; email: string };
+  createdAt: string;
+}
+
+export interface AccountTransferRecord {
+  id: string;
+  transferNumber: string;
+  fromType: "BANK" | "CASH";
+  fromBankAccountId?: string;
+  fromCashAccountId?: string;
+  toType: "BANK" | "CASH";
+  toBankAccountId?: string;
+  toCashAccountId?: string;
+  amount: number | string;
+  currency: string;
+  reference?: string;
+  receiptUrl?: string;
+  description?: string;
+  transferredAt: string;
+  fromBankAccount?: { bankName: string; currency: string; accountNumber: string };
+  fromCashAccount?: { code: string; currency: string };
+  toBankAccount?: { bankName: string; currency: string; accountNumber: string };
+  toCashAccount?: { code: string; currency: string };
+  createdBy?: { fullName: string; email: string };
+}
+
+export interface CapitalMovementRecord {
+  id: string;
+  movementNumber: string;
+  type: "INJECTION" | "WITHDRAWAL";
+  destinationType: "BANK" | "CASH";
+  bankAccountId?: string;
+  cashAccountId?: string;
+  amount: number | string;
+  currency: string;
+  partnerName?: string;
+  concept?: string;
+  receiptUrl?: string;
+  bankAccount?: { bankName: string; currency: string; accountNumber: string };
+  cashAccount?: { code: string; currency: string };
+  createdBy?: { fullName: string; email: string };
+  createdAt: string;
+}
+
+export interface FinancialSummary {
+  liquidity: {
+    totalUsd: number;
+    totalPen: number;
+    banks: {
+      totalUsd: number;
+      totalPen: number;
+      accounts: {
+        id: string;
+        name: string;
+        accountNumber: string;
+        currency: string;
+        country: string;
+        balance: number;
+      }[];
+    };
+    cash: {
+      totalUsd: number;
+      totalPen: number;
+      accounts: {
+        id: string;
+        code: string;
+        currency: string;
+        country: string;
+        balance: number;
+      }[];
+    };
+  };
+  pnl: {
+    revenue: {
+      feesUsd: number;
+      feesPen: number;
+      fxProfitUsd: number;
+      totalRevenueUsd: number;
+      totalRevenuePen: number;
+    };
+    expenses: {
+      totalUsd: number;
+      totalPen: number;
+      byCategory: Record<string, { count: number; totalUsd: number; totalPen: number }>;
+      count: number;
+    };
+    netProfit: {
+      usd: number;
+      pen: number;
+    };
+    totalTransfersCompleted: number;
+    transferredVolumeUsd: number;
+  };
+  ledgerAccounts: {
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+    currency: string;
+    balance: number;
+  }[];
 }

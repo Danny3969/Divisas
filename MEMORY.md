@@ -46,39 +46,45 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Caja:** http://localhost:3002
 
 ## 🌍 URLs Públicas Activas (Cloudflare Tunnels)
-- **Consola de Administración (Admin):** https://providence-typing-only-pix.trycloudflare.com
-- **Consola de Caja (Cashier):** https://market-cms-cohen-pointed.trycloudflare.com
-- **Backend API:** https://marshall-critical-dover-tribes.trycloudflare.com/api
+- **Consola de Administración (Admin):** https://edinburgh-aspects-pixels-twice.trycloudflare.com
+- **Consola de Caja (Cashier):** https://revised-corporation-educators-beyond.trycloudflare.com
+- **Backend API:** https://even-valves-patents-dealers.trycloudflare.com/api
 
 > Para consultar URLs si se reinician los túneles:
-> `grep -E -o "https://[a-zA-Z0-9-]+\.trycloudflare\.com" ~/.pm2/logs/divisas-tunnel-*.log | sort -u`
+> `grep "trycloudflare.com" ~/.pm2/logs/divisas-tunnel-admin-error.log | tail -n 1`
 
-## 🚀 Funcionalidades y Correcciones Implementadas
+## 🚀 Funcionalidades Implementadas
 
-### Backend (backend/src)
-- [x] Contenedor Docker PostgreSQL iniciado y sincronizado (`prisma db push`).
-- [x] Corrección en `prisma/seed.ts` para actualización consistente de contraseñas y unicidad de cuentas bancarias.
-- [x] Auth: `login` devuelve `office.country` para identificar caja.
-- [x] Customers: KYC auto-aprobado al crear.
-- [x] Beneficiaries: CRUD completo con búsqueda por nombre/documento/teléfono.
-- [x] Soporte de teléfonos con prefijo internacional.
+### Módulo de Contabilidad y Tesorería Financiera (`/ledger`)
+- [x] **Panel Financiero & P&L en Tiempo Real:**
+  - Liquidez global consolidada en USD (Ecuador) y PEN (Perú).
+  - Saldos en vivo de cuentas bancarias (Banco Pichincha, Banco Guayaquil, BCP) y cajas físicas.
+  - Estado de Pérdidas y Ganancias (P&L): Ingresos por comisiones de giros + Margen FX Spread - Gastos Operativos = Utilidad Neta Real.
+- [x] **Registro de Gastos y Facturas con Desglose de Impuestos:**
+  - Categorías operativas (Alquiler, Servicios Básicos, Nómina, Comisiones Bancarias, Software, Suministros, etc.).
+  - Desglose y cálculo automático: Subtotal + IVA 15% (Ecuador) o IGV 18% (Perú) o Exento = Total.
+  - Soporte de comprobante adjunto (Fotos de recibos o archivos PDF con visor integrado).
+  - Descuento automático de saldo de la cuenta bancaria o caja seleccionada.
+- [x] **Traspasos y Fondeos Internos:**
+  - Registro de movimientos entre bancos y cajas (ej. depósito de efectivo a banco).
+- [x] **Movimientos de Capital:**
+  - Aportes/inyecciones de capital y retiros de utilidades por parte de socios.
+- [x] **Motor Contable Double-Entry Ledger:**
+  - Asientos automáticos de partida doble matemática e inmutable en cada gasto, traspaso o movimiento.
+  - Libro diario completo con botón para **Exportar a Excel / CSV**.
 
-### Consola de Caja (apps/cashier)
-- [x] Proxy de API integrado en `next.config.ts` (evita problemas de CORS y URLs caducadas).
+### Consola de Caja (`apps/cashier`)
+- [x] Proxy de API integrado en `next.config.ts`.
 - [x] Nueva Transferencia con 3 métodos: **Efectivo**, **Yape**, **Cuenta Bancaria**.
 - [x] Identificación visual por país (🇵🇪 Rojo / 🇪🇨 Amarillo).
 - [x] Prefijos de teléfono automáticos (+51 / +593).
 
-### Consola de Administración (apps/admin)
-- [x] Proxy de API integrado en `next.config.ts`.
-- [x] Clientes: botones Editar y Eliminar.
+### Consola de Administración (`apps/admin`)
+- [x] Clientes: CRUD completo.
 - [x] Sección **Beneficiarios**: lista, búsqueda, editar, eliminar.
-
-### Infraestructura
-- [x] Instalación de `cloudflared` en el sistema y configuración en PM2.
-- [x] Configuración dinámica en `next.config.ts` para enrutamiento transparente local y público.
+- [x] Sección **Contabilidad** con panel interactivo de 5 pestañas.
 
 ## 📝 Notas Técnicas
 - **Normalización de teléfonos:** `normalizePhone()` en `lib/format.ts` (cashier y admin)
 - **Presentación de teléfonos:** `fmtPhone()` en `lib/format.ts`
-- **Proxy transparente:** Tanto la consola de admin como la de caja reenvián peticiones `/api/*` al backend automáticamente sin depender de URLs de Cloudflare quemadas en el código cliente.
+- **Proxy transparente:** Peticiones `/api/*` reenviadas internamente al backend.

@@ -137,18 +137,46 @@ async function main() {
 
   // 7. Cuentas contables (ledger)
   for (const acc of [
-    { code: '1010-EC', name: 'Banco Ecuador (USD)', type: 'ASSET', currency: 'USD' },
-    { code: '1020-EC', name: 'Caja Ecuador (USD)', type: 'ASSET', currency: 'USD' },
-    { code: '2030-EC', name: 'Pasivo remesas Ecuador (USD)', type: 'LIABILITY', currency: 'USD' },
-    { code: '1010-PE', name: 'Banco Perú (PEN)', type: 'ASSET', currency: 'PEN' },
-    { code: '1020-PE', name: 'Caja Perú (PEN)', type: 'ASSET', currency: 'PEN' },
-    { code: '2030-PE', name: 'Pasivo remesas Perú (PEN)', type: 'LIABILITY', currency: 'PEN' },
-    { code: '4010', name: 'Ingresos por comisión (USD)', type: 'INCOME', currency: 'USD' },
-    { code: '4011', name: 'Ingresos por comisión (PEN)', type: 'INCOME', currency: 'PEN' },
+    // 1000 - Activos (Ecuador USD)
+    { code: '1010-EC', name: 'Banco Pichincha (USD)', type: 'ASSET', currency: 'USD' },
+    { code: '1011-EC', name: 'Banco Guayaquil (USD)', type: 'ASSET', currency: 'USD' },
+    { code: '1020-EC', name: 'Caja Efectivo Ecuador (USD)', type: 'ASSET', currency: 'USD' },
+    { code: '1030-EC', name: 'IVA Crédito Tributario 15% (USD)', type: 'ASSET', currency: 'USD' },
+
+    // 1000 - Activos (Perú PEN)
+    { code: '1010-PE', name: 'Banco BCP (PEN)', type: 'ASSET', currency: 'PEN' },
+    { code: '1020-PE', name: 'Caja Efectivo Perú (PEN)', type: 'ASSET', currency: 'PEN' },
+    { code: '1030-PE', name: 'IGV Crédito Fiscal 18% (PEN)', type: 'ASSET', currency: 'PEN' },
+
+    // 2000 - Pasivos
+    { code: '2030-EC', name: 'Pasivo remesas por pagar Ecuador (USD)', type: 'LIABILITY', currency: 'USD' },
+    { code: '2030-PE', name: 'Pasivo remesas por pagar Perú (PEN)', type: 'LIABILITY', currency: 'PEN' },
+    { code: '2040-EC', name: 'Cuentas por pagar proveedores (USD)', type: 'LIABILITY', currency: 'USD' },
+    { code: '2040-PE', name: 'Cuentas por pagar proveedores (PEN)', type: 'LIABILITY', currency: 'PEN' },
+
+    // 3000 - Patrimonio
+    { code: '3010', name: 'Capital Social / Aportes de Socios', type: 'EQUITY', currency: 'USD' },
+    { code: '3020', name: 'Retiros de Utilidades / Dividendos', type: 'EQUITY', currency: 'USD' },
+
+    // 4000 - Ingresos
+    { code: '4010', name: 'Ingresos por comisiones de giros (USD)', type: 'INCOME', currency: 'USD' },
+    { code: '4011', name: 'Ingresos por comisiones de giros (PEN)', type: 'INCOME', currency: 'PEN' },
+    { code: '4020', name: 'Ganancia por diferencial cambiario (FX Spread)', type: 'INCOME', currency: 'USD' },
+
+    // 5000 - Gastos Operativos
+    { code: '5010', name: 'Alquiler y Arriendos', type: 'EXPENSE', currency: 'USD' },
+    { code: '5020', name: 'Servicios Básicos (Luz, Agua, Internet, Teléfono)', type: 'EXPENSE', currency: 'USD' },
+    { code: '5030', name: 'Sueldos y Nómina de Personal', type: 'EXPENSE', currency: 'USD' },
+    { code: '5040', name: 'Comisiones Bancarias y Pasarelas', type: 'EXPENSE', currency: 'USD' },
+    { code: '5050', name: 'Software, Servidores y Hosting', type: 'EXPENSE', currency: 'USD' },
+    { code: '5060', name: 'Suministros de Oficina y Papelería', type: 'EXPENSE', currency: 'USD' },
+    { code: '5070', name: 'Publicidad y Marketing', type: 'EXPENSE', currency: 'USD' },
+    { code: '5080', name: 'Impuestos y Tasas Municipales', type: 'EXPENSE', currency: 'USD' },
+    { code: '5090', name: 'Gastos Operativos Varios', type: 'EXPENSE', currency: 'USD' },
   ]) {
     await prisma.ledgerAccount.upsert({
       where: { code: acc.code },
-      update: {},
+      update: { name: acc.name, type: acc.type as any, currency: acc.currency },
       create: { ...acc, type: acc.type as any },
     });
   }
