@@ -264,6 +264,30 @@ async function main() {
     });
   }
 
+  // 11. Proveedores iniciales
+  for (const sup of [
+    { name: 'CNT Ecuador (Internet & Telefonía)', taxId: '1768152560001', countryId: ec.id, category: 'UTILITIES', phone: '+59323731700', email: 'atencion@cnt.gob.ec', bankName: 'Banco Pichincha' },
+    { name: 'Claro Perú (Telecomunicaciones)', taxId: '20467534026', countryId: pe.id, category: 'UTILITIES', phone: '+5116131000', email: 'corporativo@claro.com.pe', bankName: 'BCP' },
+    { name: 'Inmobiliaria Quito Centro (Arriendo Local)', taxId: '1791234567001', countryId: ec.id, category: 'RENT', phone: '+593998765432', email: 'arriendos@quitoinm.com', bankName: 'Banco Pichincha' },
+  ]) {
+    const existing = await prisma.supplier.findFirst({ where: { name: sup.name } });
+    if (!existing) {
+      await prisma.supplier.create({ data: sup });
+    }
+  }
+
+  // 12. Trabajadores iniciales de nómina
+  for (const emp of [
+    { fullName: 'Ana María López', documentType: DocumentType.CEDULA, documentNumber: '1712345678', countryId: ec.id, position: 'Cajera Principal Quito', baseSalary: 550, salaryCurrency: 'USD', bankName: 'Banco Pichincha', bankAccountNumber: '2100889977' },
+    { fullName: 'Carlos Alberto Ruiz', documentType: DocumentType.DNI, documentNumber: '45678912', countryId: pe.id, position: 'Cajero Principal Lima', baseSalary: 1800, salaryCurrency: 'PEN', bankName: 'BCP', bankAccountNumber: '191-44556677-0-11' },
+  ]) {
+    await prisma.employee.upsert({
+      where: { documentType_documentNumber: { documentType: emp.documentType, documentNumber: emp.documentNumber } },
+      update: {},
+      create: { ...emp, baseSalary: new (require('@prisma/client/runtime/library').Decimal)(emp.baseSalary) },
+    });
+  }
+
   console.log('=== SEED COMPLETADO ===');
   console.log('Usuarios demo (password: Divisas2026!):');
   for (const u of users) console.log(`  ${u.email}  ->  ${u.role}`);

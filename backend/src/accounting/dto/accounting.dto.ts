@@ -1,36 +1,34 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsEnum, Min } from 'class-validator';
-
-export enum ExpenseCategory {
-  RENT = 'RENT',
-  UTILITIES = 'UTILITIES',
-  PAYROLL = 'PAYROLL',
-  BANK_FEES = 'BANK_FEES',
-  SOFTWARE_HOSTING = 'SOFTWARE_HOSTING',
-  OFFICE_SUPPLIES = 'OFFICE_SUPPLIES',
-  MARKETING = 'MARKETING',
-  TAXES = 'TAXES',
-  OTHER = 'OTHER',
-}
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsEnum,
+  Min,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateExpenseDto {
-  @IsEnum(ExpenseCategory)
-  @IsNotEmpty()
-  category: ExpenseCategory;
+  @IsString()
+  category: string;
+
+  @IsOptional()
+  @IsString()
+  supplierId?: string;
 
   @IsString()
-  @IsNotEmpty()
   supplierName: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   supplierTaxId?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   invoiceNumber?: string;
 
   @IsString()
-  @IsNotEmpty()
   currency: string; // USD | PEN
 
   @IsNumber()
@@ -38,65 +36,62 @@ export class CreateExpenseDto {
   subtotal: number;
 
   @IsNumber()
-  @IsOptional()
-  taxRate?: number; // 15.00 o 18.00 o 0.00
+  @Min(0)
+  taxRate: number;
 
   @IsNumber()
-  @IsOptional()
-  taxAmount?: number;
+  @Min(0)
+  taxAmount: number;
 
   @IsNumber()
   @Min(0.01)
   total: number;
 
   @IsString()
-  @IsNotEmpty()
   paymentSourceType: 'BANK' | 'CASH';
 
-  @IsString()
   @IsOptional()
+  @IsString()
   bankAccountId?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   cashAccountId?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   paidAt?: string;
 
-  @IsString()
   @IsOptional()
-  receiptUrl?: string; // Data URL / Base64 o URL comprobante
+  @IsString()
+  receiptUrl?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   notes?: string;
 }
 
 export class CreateAccountTransferDto {
   @IsString()
-  @IsNotEmpty()
   fromType: 'BANK' | 'CASH';
 
-  @IsString()
   @IsOptional()
+  @IsString()
   fromBankAccountId?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   fromCashAccountId?: string;
 
   @IsString()
-  @IsNotEmpty()
   toType: 'BANK' | 'CASH';
 
-  @IsString()
   @IsOptional()
+  @IsString()
   toBankAccountId?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   toCashAccountId?: string;
 
   @IsNumber()
@@ -104,37 +99,34 @@ export class CreateAccountTransferDto {
   amount: number;
 
   @IsString()
-  @IsNotEmpty()
-  currency: string;
+  currency: string; // USD | PEN
 
-  @IsString()
   @IsOptional()
+  @IsString()
   reference?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   receiptUrl?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   description?: string;
 }
 
 export class CreateCapitalMovementDto {
   @IsString()
-  @IsNotEmpty()
   type: 'INJECTION' | 'WITHDRAWAL';
 
   @IsString()
-  @IsNotEmpty()
   destinationType: 'BANK' | 'CASH';
 
-  @IsString()
   @IsOptional()
+  @IsString()
   bankAccountId?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   cashAccountId?: string;
 
   @IsNumber()
@@ -142,18 +134,325 @@ export class CreateCapitalMovementDto {
   amount: number;
 
   @IsString()
-  @IsNotEmpty()
-  currency: string;
+  currency: string; // USD | PEN
 
-  @IsString()
   @IsOptional()
+  @IsString()
   partnerName?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   concept?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   receiptUrl?: string;
+}
+
+// ============ PROVEEDORES ============
+
+export class CreateSupplierDto {
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @IsString()
+  countryCode: string; // EC | PE
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class UpdateSupplierDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+// ============ EMPLEADOS / NÓMINA ============
+
+export class CreateEmployeeDto {
+  @IsString()
+  fullName: string;
+
+  @IsOptional()
+  @IsString()
+  documentType?: 'CEDULA' | 'DNI' | 'PASSPORT' | 'RUC';
+
+  @IsString()
+  documentNumber: string;
+
+  @IsString()
+  countryCode: string; // EC | PE
+
+  @IsString()
+  position: string; // Cajero, Administrador, etc.
+
+  @IsNumber()
+  @Min(0)
+  baseSalary: number;
+
+  @IsString()
+  salaryCurrency: string; // USD | PEN
+
+  @IsOptional()
+  @IsString()
+  paymentFrequency?: string; // MONTHLY | BIWEEKLY
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  hiredAt?: string;
+}
+
+export class UpdateEmployeeDto {
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  position?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  baseSalary?: number;
+
+  @IsOptional()
+  @IsString()
+  salaryCurrency?: string;
+
+  @IsOptional()
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsString()
+  bankAccountNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+}
+
+export class CreatePayrollPaymentDto {
+  @IsString()
+  employeeId: string;
+
+  @IsNumber()
+  @Min(0.01)
+  amount: number;
+
+  @IsString()
+  currency: string; // USD | PEN
+
+  @IsString()
+  period: string; // p. ej. "Agosto 2026"
+
+  @IsString()
+  paymentSourceType: 'BANK' | 'CASH';
+
+  @IsOptional()
+  @IsString()
+  bankAccountId?: string;
+
+  @IsOptional()
+  @IsString()
+  cashAccountId?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+// ============ MOVIMIENTOS Y CONCILIACIÓN BANCARIA ============
+
+export class CreateBankMovementDto {
+  @IsString()
+  bankAccountId: string;
+
+  @IsString()
+  type: 'DEPOSIT' | 'WITHDRAWAL';
+
+  @IsNumber()
+  @Min(0.01)
+  amount: number;
+
+  @IsString()
+  currency: string;
+
+  @IsOptional()
+  @IsString()
+  reference?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptUrl?: string;
+}
+
+export class BankStatementRawLineDto {
+  @IsString()
+  date: string;
+
+  @IsString()
+  description: string;
+
+  @IsOptional()
+  @IsString()
+  reference?: string;
+
+  @IsNumber()
+  amount: number; // positive for deposit, negative or positive for withdrawal
+
+  @IsString()
+  type: 'DEPOSIT' | 'WITHDRAWAL';
+}
+
+export class UploadBankStatementDto {
+  @IsString()
+  bankAccountId: string;
+
+  @IsString()
+  fileName: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BankStatementRawLineDto)
+  lines: BankStatementRawLineDto[];
+}
+
+export class MatchBankStatementLineDto {
+  @IsString()
+  lineId: string;
+
+  @IsString()
+  action: 'MATCH' | 'CREATE_EXPENSE' | 'CREATE_TRANSFER' | 'CREATE_CAPITAL' | 'IGNORE';
+
+  @IsOptional()
+  @IsString()
+  matchedRef?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  supplierName?: string;
+}
+
+// ============ RESET Y SALDOS INICIALES ============
+
+export class ResetInitialDataDto {
+  @IsNumber()
+  @Min(0)
+  pichinchaBalanceUsd: number;
+
+  @IsNumber()
+  @Min(0)
+  cashEcBalanceUsd: number;
+
+  @IsNumber()
+  @Min(0)
+  bcpBalancePen: number;
+
+  @IsNumber()
+  @Min(0)
+  cashPeBalancePen: number;
+
+  @IsOptional()
+  @IsString()
+  partnerName?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

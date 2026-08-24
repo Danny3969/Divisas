@@ -157,6 +157,8 @@ model Country {
   customers     Customer[]
   beneficiaries Beneficiary[]
   bankAccounts  BankAccount[]
+  suppliers     Supplier[]
+  employees     Employee[]
 }
 
 model Currency {
@@ -222,6 +224,7 @@ model User {
   expensesCreated Expense[] @relation("ExpenseCreatedBy")
   accountTransfersCreated AccountTransfer[] @relation("AccountTransferCreatedBy")
   capitalMovementsCreated CapitalMovement[] @relation("CapitalMovementCreatedBy")
+  payrollPaymentsCreated  PayrollPayment[]  @relation("PayrollPaymentCreatedBy")
 }
 
 // ============ CLIENTES ============
@@ -519,6 +522,8 @@ model BankAccount {
   transfersFrom    AccountTransfer[] @relation("TransferFromBank")
   transfersTo      AccountTransfer[] @relation("TransferToBank")
   capitalMovements CapitalMovement[]
+  payrollPayments  PayrollPayment[]
+  bankStatements   BankStatement[]
 }
 
 model BankTransaction {
@@ -532,6 +537,41 @@ model BankTransaction {
   createdAt     DateTime @default(now())
 
   bankAccount BankAccount @relation(fields: [bankAccountId], references: [id])
+}
+
+model BankStatement {
+  id               String   @id @default(uuid())
+  bankAccountId    String
+  fileName         String
+  totalDeposits    Decimal  @default(0) @db.Decimal(18, 2)
+  totalWithdrawals Decimal  @default(0) @db.Decimal(18, 2)
+  linesCount       Int      @default(0)
+  matchedCount     Int      @default(0)
+  status           String   @default("PENDING") // PENDING | PARTIALLY_MATCHED | RECONCILED
+  uploadedAt       DateTime @default(now())
+
+  bankAccount BankAccount         @relation(fields: [bankAccountId], references: [id])
+  lines       BankStatementLine[]
+
+  @@index([bankAccountId])
+}
+
+model BankStatementLine {
+  id              String   @id @default(uuid())
+  bankStatementId String
+  date            DateTime
+  description     String
+  reference       String?
+  amount          Decimal  @db.Decimal(18, 2)
+  type            String   // DEPOSIT | WITHDRAWAL
+  matched         Boolean  @default(false)
+  matchedType     String?  // TRANSFER | EXPENSE | CAPITAL | MANUAL
+  matchedRef      String?  // TRX-XXXX or EXP-XXXX or CAP-XXXX
+  createdAt       DateTime @default(now())
+
+  bankStatement BankStatement @relation(fields: [bankStatementId], references: [id], onDelete: Cascade)
+
+  @@index([bankStatementId])
 }
 
 model CashAccount {
@@ -552,6 +592,82 @@ model CashAccount {
   transfersFrom    AccountTransfer[] @relation("TransferFromCash")
   transfersTo      AccountTransfer[] @relation("TransferToCash")
   capitalMovements CapitalMovement[]
+  payrollPayments  PayrollPayment[]
+}
+
+// ============ PROVEEDORES Y PERSONAL ============
+
+model Supplier {
+  id                String   @id @default(uuid())
+  name              String   // Razón Social o Nombre
+  taxId             String?  // RUC / DNI / CI
+  countryId         String
+  category          String   @default("OTHER") // RENT | UTILITIES | SERVICES | SOFTWARE | SUPPLIES | MARKETING | OTHER
+  phone             String?
+  email             String?
+  address           String?
+  bankName          String?
+  bankAccountNumber String?
+  notes             String?
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  country  Country   @relation(fields: [countryId], references: [id])
+  expenses Expense[]
+
+  @@index([countryId])
+}
+
+model Employee {
+  id                String       @id @default(uuid())
+  fullName          String
+  documentType      DocumentType @default(CEDULA)
+  documentNumber    String
+  countryId         String
+  position          String       // Cajero, Administrador, Supervisor, Contador, etc.
+  baseSalary        Decimal      @db.Decimal(18, 2)
+  salaryCurrency    String       @default("USD") // USD | PEN
+  paymentFrequency  String       @default("MONTHLY") // MONTHLY | BIWEEKLY
+  bankName          String?
+  bankAccountNumber String?
+  phone             String?
+  email             String?
+  hiredAt           DateTime     @default(now())
+  active            Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  country         Country          @relation(fields: [countryId], references: [id])
+  payrollPayments PayrollPayment[]
+
+  @@unique([documentType, documentNumber])
+}
+
+model PayrollPayment {
+  id                String   @id @default(uuid())
+  payrollNumber     String   @unique // PAY-202608-0001
+  employeeId        String
+  amount            Decimal  @db.Decimal(18, 2)
+  currency          String   // USD | PEN
+  period            String   // p. ej. "Agosto 2026", "1ra Quincena Agosto 2026"
+  paymentSourceType String   // BANK | CASH
+  bankAccountId     String?
+  cashAccountId     String?
+  paidAt            DateTime @default(now())
+  receiptUrl        String?  // Comprobante adjunto
+  notes             String?
+  entryGroupId      String?  // Referencia al asiento en LedgerEntry
+  createdById       String?
+  createdAt         DateTime @default(now())
+
+  employee    Employee     @relation(fields: [employeeId], references: [id])
+  bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
+  cashAccount CashAccount? @relation(fields: [cashAccountId], references: [id])
+  createdBy   User?        @relation("PayrollPaymentCreatedBy", fields: [createdById], references: [id])
+
+  @@index([employeeId])
+  @@index([paidAt])
 }
 
 // ============ GASTOS Y CONTABILIDAD FINANCIERA ============
@@ -560,6 +676,7 @@ model Expense {
   id                String   @id @default(uuid())
   expenseNumber     String   @unique // EXP-202608-0001
   category          String   // RENT | UTILITIES | PAYROLL | BANK_FEES | SOFTWARE_HOSTING | OFFICE_SUPPLIES | MARKETING | TAXES | OTHER
+  supplierId        String?
   supplierName      String
   supplierTaxId     String?  // RUC / DNI / CI
   invoiceNumber     String?  // N° de Factura / Boleta / Comprobante
@@ -579,6 +696,7 @@ model Expense {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
+  supplier    Supplier?    @relation(fields: [supplierId], references: [id])
   bankAccount BankAccount? @relation(fields: [bankAccountId], references: [id])
   cashAccount CashAccount? @relation(fields: [cashAccountId], references: [id])
   createdBy   User?        @relation("ExpenseCreatedBy", fields: [createdById], references: [id])

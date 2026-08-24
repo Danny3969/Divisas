@@ -46,32 +46,36 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Caja:** http://localhost:3002
 
 ## 🌍 URLs Públicas Activas (Cloudflare Tunnels)
-- **Consola de Administración (Admin):** https://edinburgh-aspects-pixels-twice.trycloudflare.com
-- **Consola de Caja (Cashier):** https://revised-corporation-educators-beyond.trycloudflare.com
-- **Backend API:** https://even-valves-patents-dealers.trycloudflare.com/api
+- **Consola de Administración (Admin):** https://volume-dialogue-down-stop.trycloudflare.com
+- **Consola de Caja (Cashier):** https://campaign-gloves-entitled-parks.trycloudflare.com
+- **Backend API:** https://solved-loud-rating-belly.trycloudflare.com/api
 
 > Para consultar URLs si se reinician los túneles:
 > `grep "trycloudflare.com" ~/.pm2/logs/divisas-tunnel-admin-error.log | tail -n 1`
 
 ## 🚀 Funcionalidades Implementadas
 
-### Módulo de Contabilidad y Tesorería Financiera (`/ledger`)
-- [x] **Panel Financiero & P&L en Tiempo Real:**
-  - Liquidez global consolidada en USD (Ecuador) y PEN (Perú).
-  - Saldos en vivo de cuentas bancarias (Banco Pichincha, Banco Guayaquil, BCP) y cajas físicas.
-  - Estado de Pérdidas y Ganancias (P&L): Ingresos por comisiones de giros + Margen FX Spread - Gastos Operativos = Utilidad Neta Real.
-- [x] **Registro de Gastos y Facturas con Desglose de Impuestos:**
-  - Categorías operativas (Alquiler, Servicios Básicos, Nómina, Comisiones Bancarias, Software, Suministros, etc.).
+### Módulo de Contabilidad Empresarial y Tesorería (`/ledger`)
+- [x] **Configuración de Saldos Reales Iniciales / Purga Limpia:**
+  - Apertura limpia de contabilidad estableciendo los saldos reales en Banco Pichincha (USD), BCP (PEN) y Cajas de efectivo con asiento automático a Capital Social.
+- [x] **Gestión Bancaria y Conciliación Inteligente:**
+  - Flujo de depósitos y retiros directos en Banco Pichincha (Ecuador) y BCP (Perú).
+  - Importador y conciliador de extractos bancarios en CSV/Excel con detección de movimientos, cotejo automático y creación de gastos/ingresos en 1 clic.
+- [x] **Directorio de Proveedores:**
+  - Catálogo de proveedores con RUC/DNI, razón social, categoría habitual y cuentas bancarias.
+  - Autocompletado directo al registrar facturas y gastos.
+- [x] **Personal y Nómina de Sueldos:**
+  - Registro de trabajadores con cargos, salarios base pactados (USD o PEN), país y cuenta bancaria de depósito.
+  - Modal de liquidación y pago de nómina con 1 clic (descuenta de la cuenta/caja y registra asiento en cuenta `5030 Sueldos y Nómina`).
+- [x] **Facturas y Gastos con Desglose de Impuestos:**
   - Desglose y cálculo automático: Subtotal + IVA 15% (Ecuador) o IGV 18% (Perú) o Exento = Total.
   - Soporte de comprobante adjunto (Fotos de recibos o archivos PDF con visor integrado).
-  - Descuento automático de saldo de la cuenta bancaria o caja seleccionada.
-- [x] **Traspasos y Fondeos Internos:**
-  - Registro de movimientos entre bancos y cajas (ej. depósito de efectivo a banco).
-- [x] **Movimientos de Capital:**
-  - Aportes/inyecciones de capital y retiros de utilidades por parte de socios.
-- [x] **Motor Contable Double-Entry Ledger:**
-  - Asientos automáticos de partida doble matemática e inmutable en cada gasto, traspaso o movimiento.
-  - Libro diario completo con botón para **Exportar a Excel / CSV**.
+- [x] **Traspasos Internos y Capital:**
+  - Fondeo de caja desde el banco y depósitos de recaudación a banco.
+  - Aportes y retiros de utilidades de socios.
+- [x] **Libro Contable Double-Entry y Exportación:**
+  - Asientos de partida doble matemática inmutables.
+  - Exportación del Libro Diario a Excel / CSV en 1 clic.
 
 ### Consola de Caja (`apps/cashier`)
 - [x] Proxy de API integrado en `next.config.ts`.
@@ -82,7 +86,7 @@ npx pm2 logs                         # Ver logs en tiempo real
 ### Consola de Administración (`apps/admin`)
 - [x] Clientes: CRUD completo.
 - [x] Sección **Beneficiarios**: lista, búsqueda, editar, eliminar.
-- [x] Sección **Contabilidad** con panel interactivo de 5 pestañas.
+- [x] Sección **Contabilidad** con panel interactivo de 7 pestañas.
 
 ## 📝 Notas Técnicas
 - **Normalización de teléfonos:** `normalizePhone()` en `lib/format.ts` (cashier y admin)

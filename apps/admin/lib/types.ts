@@ -330,3 +330,89 @@ export interface FinancialSummary {
     balance: number;
   }[];
 }
+
+export interface Supplier {
+  id: string;
+  name: string;
+  taxId?: string;
+  countryId: string;
+  category: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  notes?: string;
+  active: boolean;
+  country?: { code: string; name: string };
+  createdAt: string;
+}
+
+export interface Employee {
+  id: string;
+  fullName: string;
+  documentType: string;
+  documentNumber: string;
+  countryId: string;
+  position: string;
+  baseSalary: number | string;
+  salaryCurrency: string;
+  paymentFrequency: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  phone?: string;
+  email?: string;
+  hiredAt: string;
+  active: boolean;
+  country?: { code: string; name: string };
+  createdAt: string;
+}
+
+export interface PayrollPayment {
+  id: string;
+  payrollNumber: string;
+  employeeId: string;
+  amount: number | string;
+  currency: string;
+  period: string;
+  paymentSourceType: "BANK" | "CASH";
+  bankAccountId?: string;
+  cashAccountId?: string;
+  paidAt: string;
+  receiptUrl?: string;
+  notes?: string;
+  employee?: Employee;
+  bankAccount?: { bankName: string; currency: string; accountNumber: string };
+  cashAccount?: { code: string; currency: string };
+  createdBy?: { fullName: string; email: string };
+  createdAt: string;
+}
+
+export interface BankStatementLine {
+  id: string;
+  bankStatementId: string;
+  date: string;
+  description: string;
+  reference?: string;
+  amount: number | string;
+  type: "DEPOSIT" | "WITHDRAWAL";
+  matched: boolean;
+  matchedType?: string;
+  matchedRef?: string;
+  createdAt: string;
+}
+
+export interface BankStatement {
+  id: string;
+  bankAccountId: string;
+  fileName: string;
+  totalDeposits: number | string;
+  totalWithdrawals: number | string;
+  linesCount: number;
+  matchedCount: number;
+  status: "PENDING" | "PARTIALLY_MATCHED" | "RECONCILED";
+  uploadedAt: string;
+  bankAccount?: { bankName: string; accountNumber: string; currency: string };
+  lines?: BankStatementLine[];
+}
+
