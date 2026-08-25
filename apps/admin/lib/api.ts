@@ -65,6 +65,12 @@ async function handle<T>(res: Response): Promise<T> {
       clearSession();
       if (
         typeof window !== "undefined" &&
+        window.location.pathname.startsWith("/login")
+      ) {
+        throw new ApiError(message || "Correo electrónico o contraseña incorrectos.", 401);
+      }
+      if (
+        typeof window !== "undefined" &&
         !window.location.pathname.startsWith("/login")
       ) {
         window.location.href = "/login";
