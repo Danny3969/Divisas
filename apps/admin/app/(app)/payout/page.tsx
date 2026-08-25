@@ -16,6 +16,15 @@ import { get, post } from "@/lib/api";
 import { STATUS_COLORS, STATUS_LABELS, fmtDate, fmtMoney } from "@/lib/format";
 import type { CashAccount, Transfer } from "@/lib/types";
 
+function maskValexCode(code?: string) {
+  if (!code) return "—";
+  const parts = code.split("-");
+  if (parts.length === 3) {
+    return `${parts[0]}-${parts[1]}-••••`;
+  }
+  return code.slice(0, Math.ceil(code.length / 2)) + "••••";
+}
+
 export default function PayoutPage() {
   const router = useRouter();
   const [code, setCode] = useState("");
@@ -58,7 +67,7 @@ export default function PayoutPage() {
   const validateCode = async (codeToValidate?: string) => {
     const targetCode = (codeToValidate || code).trim().toUpperCase();
     if (!targetCode) {
-      setError("Ingrese el código único de retiro.");
+      setError("Ingrese el Código Único de VALEX.");
       return;
     }
 
@@ -77,7 +86,7 @@ export default function PayoutPage() {
     } catch (err) {
       setTransfer(null);
       setError(
-        err instanceof Error ? err.message : "Código de retiro inválido o expirado",
+        err instanceof Error ? err.message : "Código Único de VALEX inválido o expirado",
       );
     } finally {
       setLoading(false);
@@ -86,17 +95,31 @@ export default function PayoutPage() {
 
   const selectTransferFromList = (t: Transfer) => {
     setTransfer(t);
-    setCode(t.withdrawalCode || "");
+    // DO NOT auto-fill the code: the cashier MUST enter the code presented by the beneficiary
+    setCode("");
     setDocNumber(t.beneficiary?.documentNumber || "");
     setError(null);
     setSuccess(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Check if entered code matches the selected transfer
+  const isCodeMatch =
+    transfer &&
+    code.trim().toUpperCase() &&
+    transfer.withdrawalCode &&
+    code.trim().toUpperCase() === transfer.withdrawalCode.trim().toUpperCase();
+
+  const isCodeEntered = Boolean(code.trim());
+
   const payOut = async () => {
     if (!transfer) return;
     if (!code.trim()) {
-      setError("Debe ingresar el código único de retiro.");
+      setError("Debe ingresar el Código Único de VALEX.");
+      return;
+    }
+    if (!isCodeMatch) {
+      setError("El Código Único de VALEX ingresado NO coincide con esta transacción. No se puede realizar el pago.");
       return;
     }
     if (!docNumber.trim()) {
@@ -115,7 +138,7 @@ export default function PayoutPage() {
         beneficiaryDocument: docNumber.trim(),
       });
       setSuccess(
-        `✅ ¡Entrega realizada con éxito! Se han entregado ${fmtMoney(t.receiveAmount, t.receiveCurrency)} a ${t.beneficiary.fullName}.`,
+        `✅ ¡Transacción CANCELADA / PAGADA con éxito! Se han entregado ${fmtMoney(t.receiveAmount, t.receiveCurrency)} a ${t.beneficiary.fullName}.`,
       );
       setTransfer(t);
       loadPending();
@@ -138,7 +161,7 @@ export default function PayoutPage() {
             <span>🏧</span> Caja de Retiro y Entrega de Fondos
           </h1>
           <p className="text-xs text-[#00E5FF] font-semibold">
-            VALEX · Validación de Código Único y Entrega en Efectivo, Yape o Cuenta Bancaria
+            VALEX · Validar Código Único de VALEX y Entrega en Efectivo, Yape o Cuenta Bancaria
           </p>
         </div>
         <div className="text-right">
@@ -148,8 +171,8 @@ export default function PayoutPage() {
         </div>
       </div>
 
-      {/* STEP 1: CODE INPUT */}
-      <Card title="1 — Validar Código Único de Retiro">
+      {/* STEP 1: CODE SEARCH */}
+      <Card title="1 — Validar Código Único de VALEX">
         <div className="space-y-3">
           <div className="flex gap-2">
             <Input
@@ -163,7 +186,7 @@ export default function PayoutPage() {
               loading={loading}
               className="bg-[#475569] hover:bg-slate-700 text-white font-bold px-6"
             >
-              Validar Código
+              Validar Código Único de VALEX
             </Button>
           </div>
           {error && <Alert>{error}</Alert>}
@@ -172,7 +195,7 @@ export default function PayoutPage() {
 
       {/* STEP 2: VERIFICATION & PAYOUT */}
       {transfer && (
-        <Card title="2 — Verificar Beneficiario y Entregar Fondos">
+        <Card title="2 — Verificar Beneficiario, Validar Código y Cancelar Transacción">
           <div className="space-y-4">
             {/* Beneficiary Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl bg-slate-50 border border-slate-200 p-4 gap-3">
@@ -207,18 +230,37 @@ export default function PayoutPage() {
               </div>
             </div>
 
-            {/* Security Checks */}
-            <div className="rounded-xl bg-slate-100 p-3 text-xs space-y-1 text-slate-700 border border-slate-200">
-              <div className="font-bold text-slate-900 mb-1">Controles de Seguridad VALEX:</div>
-              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
-                <span>✓</span> <span>Código de retiro verificado ({transfer.withdrawalCode || code})</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
-                <span>✓</span> <span>Verificación Anti-Fraude / KYC: APROBADO</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
-                <span>✓</span> <span>Efectivo cobrado y confirmado en caja de origen</span>
-              </div>
+            {/* Strict Code Validation Box */}
+            <div className="rounded-xl bg-slate-50 p-4 border border-slate-200 space-y-2">
+              <label className="text-xs font-bold text-slate-800 uppercase tracking-wide block">
+                🔑 Ingresar Código Único de VALEX (Presentado / Dictado por el Beneficiario) *
+              </label>
+              <Input
+                placeholder="VLX-XXXX-XXXX"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                className="font-mono text-lg font-black uppercase tracking-widest text-slate-900 bg-white"
+              />
+
+              {isCodeEntered && isCodeMatch && (
+                <div className="p-2.5 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg text-xs font-bold flex items-center gap-2">
+                  <span>✅</span>
+                  <span>¡Código Único de VALEX Correcto! Coincide exactamente con la transacción. Pago habilitado.</span>
+                </div>
+              )}
+
+              {isCodeEntered && !isCodeMatch && (
+                <div className="p-2.5 bg-red-100 border border-red-300 text-red-900 rounded-lg text-xs font-bold flex items-center gap-2">
+                  <span>❌</span>
+                  <span>Código de VALEX Incorrecto. No coincide con esta transacción. El pago está bloqueado.</span>
+                </div>
+              )}
+
+              {!isCodeEntered && (
+                <div className="p-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-medium">
+                  ⚠️ Ingrese el Código Único de VALEX para validar la identidad y desbloquear el botón de pago.
+                </div>
+              )}
             </div>
 
             {validForPayout && (
@@ -256,16 +298,18 @@ export default function PayoutPage() {
                   <Button
                     onClick={payOut}
                     loading={loading}
-                    disabled={!docNumber}
-                    className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 text-base shadow-md"
+                    disabled={!isCodeMatch || !docNumber}
+                    className="flex-1 bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold py-3 text-base shadow-md transition-all"
                   >
-                    Confirmar y Entregar {fmtMoney(transfer.receiveAmount, transfer.receiveCurrency)}
+                    {isCodeMatch
+                      ? `Confirmar Pago de ${fmtMoney(transfer.receiveAmount, transfer.receiveCurrency)} (Marcar Cancelado)`
+                      : "Ingrese Código Válido para Pagar"}
                   </Button>
                   <Button
                     variant="secondary"
                     onClick={() =>
                       alert(
-                        `🖨️ IMPRIMIENDO RECIBO TÉRMICO DE ENTREGA:\n----------------------------------------\nVALEX — GIROS & CAMBIO INT.\nREF: ${transfer.reference}\nBENEFICIARIO: ${transfer.beneficiary.fullName} (${transfer.beneficiary.documentType} ${transfer.beneficiary.documentNumber})\nREMITENTE: ${transfer.sender.fullName}\nMONTO ENTREGADO: ${transfer.receiveAmount} ${transfer.receiveCurrency}\nFECHA: ${new Date().toLocaleString()}\n----------------------------------------`
+                        `🖨️ IMPRIMIENDO RECIBO TÉRMICO DE ENTREGA:\n----------------------------------------\nVALEX — GIROS & CAMBIO INT.\nREF: ${transfer.reference}\nBENEFICIARIO: ${transfer.beneficiary.fullName} (${transfer.beneficiary.documentType} ${transfer.beneficiary.documentNumber})\nREMITENTE: ${transfer.sender.fullName}\nMONTO ENTREGADO: ${transfer.receiveAmount} ${transfer.receiveCurrency}\nESTADO: CANCELADO / PAGADO\nFECHA: ${new Date().toLocaleString()}\n----------------------------------------`
                       )
                     }
                   >
@@ -306,13 +350,13 @@ export default function PayoutPage() {
         </Alert>
       )}
 
-      {/* PENDING TRANSFERS TABLE */}
+      {/* PENDING TRANSFERS TABLE (MASKED CODE) */}
       <Card
         title="📋 Giros Pendientes de Retiro (Registrados en Sistema)"
         action={
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500 font-medium">
-              💡 Haz clic o doble clic en cualquier fila para atenderla
+              💡 Haz clic o doble clic en cualquier fila para atender la transacción
             </span>
             <Button
               variant="secondary"
@@ -342,6 +386,7 @@ export default function PayoutPage() {
                     <th className="py-2.5 px-2">Remitente</th>
                     <th className="py-2.5 px-2">Beneficiario</th>
                     <th className="py-2.5 px-2">Monto a Entregar</th>
+                    <th className="py-2.5 px-2">Código VALEX</th>
                     <th className="py-2.5 px-2">Forma Entrega</th>
                     <th className="py-2.5 px-2 text-right">Acciones</th>
                   </tr>
@@ -369,6 +414,11 @@ export default function PayoutPage() {
                       </td>
                       <td className="py-2.5 px-2 font-extrabold text-emerald-800 text-sm">
                         {fmtMoney(t.receiveAmount, t.receiveCurrency)}
+                      </td>
+                      <td className="py-2.5 px-2 font-mono text-slate-600 font-semibold">
+                        <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px] border border-slate-200" title="La mitad del código está protegida por seguridad">
+                          {maskValexCode(t.withdrawalCode)}
+                        </span>
                       </td>
                       <td className="py-2.5 px-2">
                         <span className="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
@@ -445,8 +495,9 @@ export default function PayoutPage() {
 
             {viewingTransfer.withdrawalCode && (
               <div className="rounded-xl bg-cyan-50 border border-cyan-200 p-3 text-center">
-                <span className="text-[10px] font-bold uppercase text-cyan-800 block">Código Único de Registro</span>
-                <span className="font-mono text-xl font-black text-cyan-950 tracking-widest">{viewingTransfer.withdrawalCode}</span>
+                <span className="text-[10px] font-bold uppercase text-cyan-800 block">Código Único de VALEX (Protegido)</span>
+                <span className="font-mono text-xl font-black text-cyan-950 tracking-widest">{maskValexCode(viewingTransfer.withdrawalCode)}</span>
+                <span className="text-[11px] text-slate-500 block mt-1">El cliente debe presentar el código completo en ventanilla para cobrar.</span>
               </div>
             )}
 
@@ -463,7 +514,7 @@ export default function PayoutPage() {
                   selectTransferFromList(t);
                 }}
               >
-                Atender y Entregar Fondos ➔
+                Atender y Validar Código ➔
               </Button>
             </div>
           </div>

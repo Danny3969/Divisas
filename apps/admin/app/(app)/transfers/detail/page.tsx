@@ -143,7 +143,7 @@ export default function TransferDetailPage() {
             {t.beneficiary.documentType} {t.beneficiary.documentNumber}
           </div>
         </Card>
-        <Card title="Código de retiro">
+        <Card title="Código Único de VALEX">
           <div className="font-mono text-sm font-bold text-slate-900">
             {t.withdrawalCode ?? "—"}
           </div>
@@ -154,7 +154,7 @@ export default function TransferDetailPage() {
                 onClick={handleRegenerateCode}
                 className="text-xs font-semibold text-blue-600 hover:underline"
               >
-                Regenerar
+                Regenerar Código
               </button>
             )}
           </div>

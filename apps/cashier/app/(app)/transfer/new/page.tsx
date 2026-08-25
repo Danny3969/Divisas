@@ -573,12 +573,12 @@ export default function NewTransferPage() {
         <Card title="✅ Transferencia Generada con Éxito">
           <div className="space-y-4 text-center">
             <div className="rounded-xl bg-emerald-50 p-4 border border-emerald-200">
-              <div className="text-xs text-emerald-800 uppercase tracking-wide font-semibold">Código Único de Retiro</div>
+              <div className="text-xs text-emerald-800 uppercase tracking-wide font-semibold">Código Único de VALEX</div>
               <div className="font-mono text-3xl font-extrabold text-emerald-950 my-1">
-                {createdTransfer.withdrawalCode ?? "RX7K-PENDIENTE"}
+                {createdTransfer.withdrawalCode ?? "VLX-PENDIENTE"}
               </div>
               <div className="text-xs text-emerald-700">
-                Entrega este código al cliente para que el beneficiario lo retire en Perú.
+                Entrega este código al cliente para que el beneficiario lo cobre en destino o retire por Yape/Banco.
               </div>
             </div>
 

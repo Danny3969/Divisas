@@ -409,6 +409,13 @@ export default function NewTransferPage() {
   const [remittanceReason, setRemittanceReason] = useState("Ayuda Familiar / Remesa");
   const [sourceOfFunds, setSourceOfFunds] = useState("Sueldo/Honorarios");
   const [highBillSerials, setHighBillSerials] = useState("");
+  
+  // Bank payment voucher fields
+  const [bankOrigin, setBankOrigin] = useState("Banco Pichincha");
+  const [bankRefNumber, setBankRefNumber] = useState("");
+  const [voucherPreview, setVoucherPreview] = useState<string | null>(null);
+
+  // Send amount (starts empty/zero)
   const [sendAmount, setSendAmount] = useState("");
 
   // Step 3: Quote & Confirm
@@ -504,6 +511,17 @@ export default function NewTransferPage() {
     setBeneficiarySearch("");
   };
 
+  const handleVoucherUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setVoucherPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const corridor = corridors.find((c) => c.id === corridorId);
   const sellRate = corridor && corridor.fxRates[0] ? Number(corridor.fxRates[0].sellRate) : 3.75;
   const sendAmountNum = Number(sendAmount || "0");
@@ -531,7 +549,11 @@ export default function NewTransferPage() {
       return;
     }
     if (sendAmountNum <= 0) {
-      alert("Ingrese un monto válido a enviar.");
+      alert("Ingrese un monto válido a enviar (debe ser mayor a 0).");
+      return;
+    }
+    if (paymentMethod === "BANK_TRANSFER" && !bankRefNumber.trim()) {
+      alert("Para pago por transferencia bancaria debe ingresar el número de operación o referencia del comprobante.");
       return;
     }
 
@@ -580,6 +602,16 @@ export default function NewTransferPage() {
             highBillSerials: highBillSerials || undefined,
           });
         }
+      } else if (paymentMethod === "BANK_TRANSFER") {
+        // Pago por transferencia bancaria con comprobante
+        await post<Transfer>("/payments/bank", {
+          transferId: t.id,
+          amount: t.sendAmount,
+          currency: t.sendCurrency,
+          bankName: bankOrigin || "Banco Origen",
+          transactionRef: bankRefNumber || undefined,
+          sourceOfFunds,
+        });
       }
 
       const freshTransfer = await get<Transfer>(`/transfers/${t.id}`);
@@ -596,9 +628,10 @@ export default function NewTransferPage() {
       <div className="mx-auto max-w-xl space-y-6">
         <Card title="✅ Transferencia Generada con Éxito">
           <div className="space-y-4 text-center">
+            {/* VALEX BRANDED WITHDRAWAL CODE CARD */}
             <div className="rounded-2xl bg-gradient-to-b from-emerald-50 to-teal-50/80 p-5 border-2 border-emerald-300 shadow-sm">
               <div className="text-xs text-emerald-800 uppercase tracking-widest font-black flex items-center justify-center gap-1.5">
-                <span>🔑</span> CÓDIGO ÚNICO DE RETIRO
+                <span>🔑</span> CÓDIGO ÚNICO DE VALEX
               </div>
               <div className="font-mono text-3xl sm:text-4xl font-black text-emerald-950 my-2.5 tracking-widest select-all">
                 {createdTransfer.withdrawalCode}
@@ -616,15 +649,15 @@ export default function NewTransferPage() {
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-emerald-200/90 hover:bg-emerald-300 px-3.5 py-1.5 rounded-lg transition-all shadow-xs"
                 >
                   <span>{copiedCode ? "✅" : "📋"}</span>
-                  <span>{copiedCode ? "¡Código Copiado!" : "Copiar Código"}</span>
+                  <span>{copiedCode ? "¡Código Copiado!" : "Copiar Código Único de VALEX"}</span>
                 </button>
               </div>
               <div className="text-xs text-emerald-700 mt-2.5 font-medium">
-                Entrega este código al remitente. El beneficiario lo requerirá para retirar en ventanilla o recibir por Yape/Banco.
+                Entrega este código al remitente. El beneficiario lo requerirá para validar y retirar los fondos en ventanilla o recibir por Yape/Banco.
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-left text-sm bg-slate-50 p-3 rounded-lg">
+            <div className="grid grid-cols-2 gap-3 text-left text-sm bg-slate-50 p-3.5 rounded-xl border border-slate-200">
               <div>
                 <span className="text-xs text-slate-500 block">Referencia:</span>
                 <span className="font-mono font-bold text-slate-800">{createdTransfer.reference}</span>
@@ -634,18 +667,31 @@ export default function NewTransferPage() {
                 <span className="font-semibold text-slate-800">{createdTransfer.sender.fullName}</span>
               </div>
               <div>
+                <span className="text-xs text-slate-500 block">Forma de Pago:</span>
+                <span className="font-bold text-blue-900">
+                  {createdTransfer.paymentMethod === "CASH" ? "💵 Efectivo en Ventanilla" : "🏦 Transferencia Bancaria"}
+                </span>
+              </div>
+              <div>
                 <span className="text-xs text-slate-500 block">Cobrado en Caja Emisora:</span>
                 <span className="font-extrabold text-slate-900">{fmtMoney(createdTransfer.sendAmount, createdTransfer.sendCurrency)}</span>
               </div>
-              <div>
+              <div className="col-span-2">
                 <span className="text-xs text-slate-500 block">Beneficiario / Destino:</span>
-                <span className="font-semibold text-slate-800">{createdTransfer.beneficiary.fullName}</span>
+                <span className="font-semibold text-slate-800">{createdTransfer.beneficiary.fullName} ({createdTransfer.beneficiary.documentType} {createdTransfer.beneficiary.documentNumber})</span>
               </div>
-              <div className="col-span-2 p-2 bg-emerald-100 rounded-lg">
-                <span className="text-xs text-emerald-800 block font-bold">Monto Neto a Pagar en Destino:</span>
+              <div className="col-span-2 p-2.5 bg-emerald-100/80 rounded-lg border border-emerald-300">
+                <span className="text-xs text-emerald-800 block font-bold">Monto Neto a Entregar en Destino:</span>
                 <span className="text-xl font-black text-emerald-950">{fmtMoney(createdTransfer.receiveAmount, createdTransfer.receiveCurrency)}</span>
               </div>
             </div>
+
+            {voucherPreview && (
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-left">
+                <span className="text-xs font-bold text-slate-700 block mb-1.5">📷 Comprobante de Depósito Adjunto:</span>
+                <img src={voucherPreview} alt="Comprobante" className="max-h-40 rounded-lg object-contain border border-slate-300" />
+              </div>
+            )}
 
             <div className="flex flex-col gap-2 pt-2">
               <div className="flex gap-2">
@@ -657,7 +703,7 @@ export default function NewTransferPage() {
                       const res = await get<{ link: string }>(`/transfers/${createdTransfer.id}/whatsapp-link`);
                       window.open(res.link, "_blank");
                     } catch {
-                      alert(`WhatsApp: Hola ${createdTransfer.beneficiary.fullName}, ${createdTransfer.sender.fullName} te envió un giro con código ${createdTransfer.withdrawalCode}`);
+                      alert(`WhatsApp: Hola ${createdTransfer.beneficiary.fullName}, ${createdTransfer.sender.fullName} te envió un giro con Código Único de VALEX: ${createdTransfer.withdrawalCode}`);
                     }
                   }}
                 >
@@ -665,10 +711,10 @@ export default function NewTransferPage() {
                 </Button>
                 <Button
                   variant="secondary"
-                  className="flex-1"
+                  className="flex-1 font-bold"
                   onClick={() =>
                     alert(
-                      `🖨️ IMPRIMIENDO TICKET DE REMESA DE VENTANILLA:\n----------------------------------------\nVALEX — CAMBIO & GIROS INT.\nCÓDIGO RETIRO: ${createdTransfer.withdrawalCode}\nREF: ${createdTransfer.reference}\nREMITENTE: ${createdTransfer.sender.fullName}\nBENEFICIARIO: ${createdTransfer.beneficiary.fullName}\nCOBRADO EN CAJA ORIGEN: ${createdTransfer.sendAmount} ${createdTransfer.sendCurrency}\nNETO A RETIRAR EN DESTINO: ${createdTransfer.receiveAmount} ${createdTransfer.receiveCurrency}\n----------------------------------------`
+                      `🖨️ IMPRIMIENDO TICKET DE REMESA DE VENTANILLA:\n----------------------------------------\nVALEX — CAMBIO & GIROS INT.\nCÓDIGO ÚNICO DE VALEX: ${createdTransfer.withdrawalCode}\nREF: ${createdTransfer.reference}\nREMITENTE: ${createdTransfer.sender.fullName}\nBENEFICIARIO: ${createdTransfer.beneficiary.fullName}\nCOBRADO EN CAJA ORIGEN: ${createdTransfer.sendAmount} ${createdTransfer.sendCurrency}\nNETO A RETIRAR EN DESTINO: ${createdTransfer.receiveAmount} ${createdTransfer.receiveCurrency}\n----------------------------------------`
                     )
                   }
                 >
@@ -685,6 +731,9 @@ export default function NewTransferPage() {
                   setCustomer(null);
                   setSelectedBeneficiary(null);
                   setBeneficiaryId("");
+                  setSendAmount("");
+                  setVoucherPreview(null);
+                  setBankRefNumber("");
                 }}
               >
                 Registrar Nueva Operación
@@ -705,7 +754,7 @@ export default function NewTransferPage() {
             <span>💸</span> Nueva Operación de Ventanilla
           </h1>
           <p className="text-xs text-[#00E5FF] font-semibold">
-            VALEX Express · Envío de Giros Internacionales y Cobro de Comisiones
+            VALEX Express · Depósito en Efectivo o Transferencia y Generación de Código Único de VALEX
           </p>
         </div>
         <div className="text-right text-xs">
@@ -755,7 +804,7 @@ export default function NewTransferPage() {
       )}
 
       {step === "details" && customer && (
-        <Card title="Paso 2 — Destinatario, Valores y Comisiones">
+        <Card title="Paso 2 — Destinatario, Forma de Pago y Valores">
           <div className="space-y-5">
             {/* Customer Header */}
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-sm flex items-center justify-between">
@@ -929,7 +978,121 @@ export default function NewTransferPage() {
               )}
             </div>
 
-            {/* DUAL-BOX COMMISSION & CASH CALCULATION */}
+            {/* SECTION: PAYMENT METHOD OF SENDER (EFECTIVO VS TRANSFERENCIA) */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                💳 Forma de Pago del Remitente
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("CASH")}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                    paymentMethod === "CASH"
+                      ? "border-blue-600 bg-blue-50/80 text-blue-950 font-bold shadow-xs"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="text-sm flex items-center gap-1.5">
+                    <span>💵</span>
+                    <span>Efectivo en Ventanilla</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-normal mt-0.5">
+                    El cliente entrega dinero en físico en caja
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("BANK_TRANSFER")}
+                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                    paymentMethod === "BANK_TRANSFER"
+                      ? "border-blue-600 bg-blue-50/80 text-blue-950 font-bold shadow-xs"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="text-sm flex items-center gap-1.5">
+                    <span>🏦</span>
+                    <span>Transferencia Bancaria</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-normal mt-0.5">
+                    El cliente transfiere a la cuenta bancaria de VALEX
+                  </div>
+                </button>
+              </div>
+
+              {/* Cash payment specific fields */}
+              {paymentMethod === "CASH" && (
+                <div className="pt-2">
+                  <Input
+                    label="Series de billetes de alta denominación ($50/$100) — Opcional"
+                    value={highBillSerials}
+                    onChange={(e) => setHighBillSerials(e.target.value)}
+                    placeholder="Ej: B293810, C928102"
+                  />
+                </div>
+              )}
+
+              {/* Bank Transfer specific fields with voucher attachment */}
+              {paymentMethod === "BANK_TRANSFER" && (
+                <div className="space-y-3 pt-2 border-t border-slate-200">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Select
+                      label="Banco de Origen / Transferencia"
+                      value={bankOrigin}
+                      onChange={(e) => setBankOrigin(e.target.value)}
+                      className="font-semibold text-slate-800"
+                    >
+                      <option value="Banco Pichincha">Banco Pichincha (Ecuador)</option>
+                      <option value="Banco Guayaquil">Banco Guayaquil (Ecuador)</option>
+                      <option value="Produbanco">Produbanco (Ecuador)</option>
+                      <option value="Banco Internacional">Banco Internacional (Ecuador)</option>
+                      <option value="BCP">BCP (Perú)</option>
+                      <option value="BBVA">BBVA (Perú)</option>
+                      <option value="Interbank">Interbank (Perú)</option>
+                    </Select>
+
+                    <Input
+                      label="N° Comprobante / Referencia de Operación *"
+                      value={bankRefNumber}
+                      onChange={(e) => setBankRefNumber(e.target.value)}
+                      placeholder="Ej: OP-9823419"
+                      required
+                      className="font-mono font-bold"
+                    />
+                  </div>
+
+                  {/* Voucher File Upload */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-700 block">
+                      📷 Adjuntar Foto o Comprobante de la Transferencia / Depósito
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleVoucherUpload}
+                        className="text-xs text-slate-600 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-100 file:text-blue-800 hover:file:bg-blue-200 cursor-pointer"
+                      />
+                      {voucherPreview && (
+                        <span className="text-xs text-emerald-700 font-bold flex items-center gap-1">
+                          <span>✓</span> Comprobante cargado
+                        </span>
+                      )}
+                    </div>
+
+                    {voucherPreview && (
+                      <div className="mt-2 p-2 bg-white rounded-lg border border-slate-200 max-w-xs">
+                        <img src={voucherPreview} alt="Vista previa del comprobante" className="max-h-36 rounded object-contain" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* DUAL-BOX COMMISSION & AMOUNT CALCULATION (Starts empty / 0) */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
@@ -946,8 +1109,8 @@ export default function NewTransferPage() {
                 step="any"
                 value={sendAmount}
                 onChange={(e) => setSendAmount(e.target.value)}
-                placeholder="100"
-                className="text-lg font-black text-slate-900"
+                placeholder="0.00 (Ingrese la cantidad a enviar)"
+                className="text-lg font-black text-slate-900 placeholder:text-slate-300"
               />
 
               {/* Dual-Box Symmetric Display */}
@@ -1012,13 +1175,6 @@ export default function NewTransferPage() {
               </div>
             </div>
 
-            <Input
-              label="Series de billetes de alta denominación ($50/$100) — Opcional"
-              value={highBillSerials}
-              onChange={(e) => setHighBillSerials(e.target.value)}
-              placeholder="Ej: B293810, C928102"
-            />
-
             <Button
               onClick={loadQuote}
               loading={loading}
@@ -1031,7 +1187,7 @@ export default function NewTransferPage() {
       )}
 
       {step === "confirm" && quote && corridor && (
-        <Card title="Paso 3 — Confirmación de Operación y Emisión de Código">
+        <Card title="Paso 3 — Confirmación de Operación y Emisión de Código Único de VALEX">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-xl bg-blue-50 p-3.5 border border-blue-200">
@@ -1040,7 +1196,7 @@ export default function NewTransferPage() {
                   {fmtMoney(quote.sendAmount, quote.sendCurrency)}
                 </div>
                 <div className="text-[11px] text-blue-700 mt-0.5">
-                  (Incluye comisión de emisión: {fmtMoney(quote.feeAmount, quote.feeCurrency || quote.sendCurrency)})
+                  (Forma de Pago: {PAYMENT_LABELS[paymentMethod]} · Comisión: {fmtMoney(quote.feeAmount, quote.feeCurrency || quote.sendCurrency)})
                 </div>
               </div>
 
@@ -1066,7 +1222,7 @@ export default function NewTransferPage() {
             </div>
 
             <Alert kind="info">
-              Pago recibido en <strong>{PAYMENT_LABELS[paymentMethod]}</strong>. Entrega en destino mediante <strong>{PAYOUT_LABELS[payoutMethod]}</strong> para <strong>{selectedBeneficiary?.fullName}</strong>.
+              Pago del remitente mediante <strong>{PAYMENT_LABELS[paymentMethod]}</strong>. Entrega en destino mediante <strong>{PAYOUT_LABELS[payoutMethod]}</strong> para <strong>{selectedBeneficiary?.fullName}</strong>.
             </Alert>
 
             <div className="flex gap-3 pt-2">
@@ -1082,7 +1238,7 @@ export default function NewTransferPage() {
                 loading={loading}
                 className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 shadow-md"
               >
-                Confirmar y Emitir Código de Retiro
+                Confirmar y Emitir Código Único de VALEX
               </Button>
             </div>
           </div>

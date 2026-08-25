@@ -108,6 +108,7 @@ export default function TransfersPage() {
                   <th className="py-2.5 px-3">Remitente</th>
                   <th className="py-2.5 px-3">Beneficiario</th>
                   <th className="py-2.5 px-3">Monto Enviado → Neto</th>
+                  <th className="py-2.5 px-3">Código VALEX</th>
                   <th className="py-2.5 px-3">Estado</th>
                   <th className="py-2.5 px-3 text-right">Acción</th>
                 </tr>
@@ -132,6 +133,11 @@ export default function TransfersPage() {
                       {fmtMoney(t.sendAmount, t.sendCurrency)}{" "}
                       <span className="text-slate-400 font-normal">→</span>{" "}
                       <span className="text-emerald-800">{fmtMoney(t.receiveAmount, t.receiveCurrency)}</span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="font-mono text-xs font-semibold bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-600">
+                        {t.withdrawalCode ? (t.withdrawalCode.split("-").length === 3 ? `${t.withdrawalCode.split("-")[0]}-${t.withdrawalCode.split("-")[1]}-••••` : `${t.withdrawalCode.slice(0, 4)}••••`) : "—"}
+                      </span>
                     </td>
                     <td className="py-2.5 px-3">
                       <Badge className={STATUS_COLORS[t.status]}>
