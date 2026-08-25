@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="2048" height="2048">
+  <!-- Fondo -->
+  <rect width="500" height="500" fill="#1C2333"/>
+
+  <!-- 
+    ISOTIPO VALEX — Dos flechas bidireccionales cruzadas en X
+    FLECHA CYAN (#00E5FF): de abajo-izquierda (SW) hacia arriba-derecha (NE)
+    FLECHA BLANCA (#FFFFFF): de arriba-izquierda (NW) hacia abajo-derecha (SE)
+    La flecha blanca pasa POR ENCIMA de la cyan en el centro
+  -->
+
+  <!-- FLECHA CYAN - SW to NE bidirectional -->
+  <!-- Cabeza arriba-derecha ↗ -->
+  <polygon points="310,55  425,55  425,85  365,145  310,85" fill="#00E5FF"/>
+  <!-- Eje SW-NE (se verá cortado por la flecha blanca encima) -->
+  <rect x="175" y="220" width="150" height="60" fill="#00E5FF" transform="rotate(-45 250 250)"/>
+  <!-- Cabeza abajo-izquierda ↙ -->
+  <polygon points="75,415  190,415  190,355  135,355  75,355" fill="#00E5FF"/>
+
+  <!-- FLECHA BLANCA - NW to SE bidirectional (ENCIMA) -->
+  <!-- Cabeza arriba-izquierda ↖ -->
+  <polygon points="75,55  190,55  190,85  135,145  75,85" fill="#FFFFFF"/>
+  <!-- Eje NW-SE (pasa encima del cyan, cortándolo visualmente) -->
+  <rect x="175" y="220" width="150" height="60" fill="#FFFFFF" transform="rotate(45 250 250)"/>
+  <!-- Cabeza abajo-derecha ↘ -->
+  <polygon points="310,415  425,415  425,355  365,355  310,355" fill="#FFFFFF"/>
+</svg>
