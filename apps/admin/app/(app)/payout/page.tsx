@@ -143,16 +143,20 @@ export default function PayoutPage() {
       const t = await post<Transfer>("/payouts/cash-out", {
         transferId: transfer.id,
         withdrawalCode: code.trim().toUpperCase(),
-        cashAccountId,
+        cashAccountId: transfer.payoutMethod === "CASH" ? (cashAccountId || undefined) : undefined,
         beneficiaryDocument: docNumber.trim(),
       });
-      setSuccess(
-        `✅ ¡Transacción CANCELADA / PAGADA con éxito! Se han entregado ${fmtMoney(t.receiveAmount, t.receiveCurrency)} a ${t.beneficiary.fullName}.`,
-      );
+
+      const msg = `✅ ¡Transacción CANCELADA / PAGADA con éxito! Se han entregado ${fmtMoney(t.receiveAmount, t.receiveCurrency)} a ${t.beneficiary.fullName}.`;
+      setSuccess(msg);
       setTransfer(t);
-      loadTransfers();
+      setCode("");
+      await loadTransfers();
+      alert(`✅ ¡PAGO COMPLETADO / CANCELADO CON ÉXITO!\n\nSe entregaron ${fmtMoney(t.receiveAmount, t.receiveCurrency)} a ${t.beneficiary.fullName}.\n\nEsta transacción ha quedado registrada como CANCELADA / PAGADA y su código ha sido invalidado.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al procesar la entrega");
+      const errMsg = err instanceof Error ? err.message : "Error al procesar la entrega";
+      setError(errMsg);
+      alert(`⚠️ ERROR AL PROCESAR PAGO:\n\n${errMsg}`);
     } finally {
       setLoading(false);
     }
@@ -342,10 +346,18 @@ export default function PayoutPage() {
             )}
 
             {!validForPayout && (
-              <Alert kind="info">
-                Esta operación no está en estado pendiente de entrega (Estado:{" "}
-                {STATUS_LABELS[transfer.status] ?? transfer.status}).
-              </Alert>
+              <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 text-center space-y-1.5">
+                <div className="text-sm font-black text-emerald-950 flex items-center justify-center gap-2">
+                  <span>✅</span>
+                  <span>TRANSACCIÓN CANCELADA / PAGADA</span>
+                </div>
+                <p className="text-xs text-emerald-800">
+                  Esta operación ya fue entregada al beneficiario ({transfer.beneficiary.fullName}) y el Código Único de VALEX ha sido invalidado. <strong>No se puede volver a pagar este mismo VALEX.</strong>
+                </p>
+                <div className="text-[11px] font-mono text-emerald-700 font-bold">
+                  Estado actual en el sistema: {STATUS_LABELS[transfer.status] ?? transfer.status}
+                </div>
+              </div>
             )}
           </div>
         </Card>

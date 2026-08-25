@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class ProcessCashOutDto {
   @IsString()
@@ -7,11 +7,13 @@ export class ProcessCashOutDto {
   @IsString()
   withdrawalCode: string;
 
+  @IsOptional()
   @IsString()
-  cashAccountId: string;
+  cashAccountId?: string;
 
+  @IsOptional()
   @IsString()
-  beneficiaryDocument: string; // documento del beneficiario presentado en ventanilla
+  beneficiaryDocument?: string; // documento del beneficiario presentado en ventanilla
 }
 
 export class ProcessBankPayoutDto {
