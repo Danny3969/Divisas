@@ -247,7 +247,7 @@ export class TransfersService {
 
   async listMine(userId: string) {
     const customer = await this.prisma.customer.findUnique({ where: { userId } });
-    if (!customer) throw new NotFoundException('Perfil de cliente no encontrado');
+    if (!customer) return [];
     return this.prisma.transfer.findMany({
       where: { senderId: customer.id },
       include: {

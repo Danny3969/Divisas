@@ -40,10 +40,40 @@ export class CustomersService {
   }
 
   async findByUser(userId: string) {
-    const customer = await this.prisma.customer.findUnique({
+    let customer = await this.prisma.customer.findUnique({
       where: { userId },
       include: { country: true },
     });
+    if (!customer) {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user) {
+        const country = (await this.prisma.country.findFirst({ where: { code: 'EC' } })) ?? (await this.prisma.country.findFirst());
+        if (country) {
+          const docNum = user.phone ? user.phone.replace(/\D/g, '') : `09${Math.floor(10000000 + Math.random() * 90000000)}`;
+          customer = await this.prisma.customer.upsert({
+            where: {
+              documentType_documentNumber: {
+                documentType: 'CEDULA',
+                documentNumber: docNum,
+              },
+            },
+            update: { userId: user.id },
+            create: {
+              userId: user.id,
+              type: 'PERSON',
+              fullName: user.fullName,
+              documentType: 'CEDULA',
+              documentNumber: docNum,
+              countryId: country.id,
+              email: user.email,
+              phone: user.phone || '+593991234567',
+              kycStatus: 'APPROVED',
+            },
+            include: { country: true },
+          });
+        }
+      }
+    }
     if (!customer) throw new NotFoundException('Perfil de cliente no encontrado');
     return customer;
   }

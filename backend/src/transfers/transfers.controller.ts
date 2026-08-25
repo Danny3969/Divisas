@@ -31,7 +31,7 @@ export class TransfersController {
   }
 
   @Get('mine')
-  @Roles(Role.CUSTOMER)
+  @Roles(Role.CUSTOMER, Role.ADMIN, Role.SUPERVISOR, Role.CASHIER, Role.COMPLIANCE, Role.TREASURY)
   listMine(@CurrentUser() user: AuthUser) {
     return this.service.listMine(user.userId);
   }

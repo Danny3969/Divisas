@@ -13,7 +13,7 @@ export class AdminController {
   constructor(private service: AdminService) {}
 
   @Get('dashboard')
-  @Roles(Role.SUPERVISOR, Role.TREASURY, Role.ADMIN, Role.COMPLIANCE, Role.AUDITOR)
+  @Roles(Role.SUPERVISOR, Role.TREASURY, Role.ADMIN, Role.COMPLIANCE, Role.AUDITOR, Role.CASHIER)
   dashboard() {
     return this.service.dashboard();
   }

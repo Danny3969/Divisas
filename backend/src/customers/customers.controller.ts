@@ -31,7 +31,7 @@ export class CustomersController {
   }
 
   @Get('me')
-  @Roles(Role.CUSTOMER)
+  @Roles(Role.CUSTOMER, Role.ADMIN, Role.SUPERVISOR, Role.CASHIER, Role.COMPLIANCE, Role.TREASURY)
   findMe(@CurrentUser() user: AuthUser) {
     return this.service.findByUser(user.userId);
   }

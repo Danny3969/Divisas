@@ -27,11 +27,13 @@ export type PayoutMethod = "CASH" | "BANK" | "MOBILE_WALLET";
 
 export interface AuthUser {
   userId: string;
+  id?: string;
   email: string;
   fullName: string;
   role: Role;
-  officeId?: string;
-  officeName?: string;
+  officeId?: string | null;
+  officeName?: string | null;
+  office?: { id: string; name: string; country?: { code: string; name: string } | null } | null;
 }
 
 export interface Corridor {
@@ -155,6 +157,7 @@ export interface CashSession {
   status: "OPEN" | "CLOSED";
   openedAt: string;
   closedAt?: string;
+  openedBy?: { fullName: string; email: string };
   cashAccount?: { code: string; currency: string };
 }
 

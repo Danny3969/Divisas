@@ -182,15 +182,25 @@ async function main() {
   }
 
   // 8. Usuarios demo
-  const passwordHash = await bcrypt.hash('Divisas2026!', 10);
+  const passwordHash = await bcrypt.hash('Valex2026!', 10);
   const users = [
+    // VALEX emails
+    { email: 'admin@valex.com', fullName: 'Admin General VALEX', role: Role.ADMIN },
     { email: 'admin@divisas.com', fullName: 'Admin Sistema', role: Role.ADMIN },
-    { email: 'cajero.ec@divisas.com', fullName: 'Ana López', role: Role.CASHIER, officeId: officeEc.id },
-    { email: 'cajero.pe@divisas.com', fullName: 'Carlos Ruiz', role: Role.CASHIER, officeId: officePe.id },
+    { email: 'cajero.ec@valex.com', fullName: 'Ana López (Ecuador)', role: Role.CASHIER, officeId: officeEc.id },
+    { email: 'cajero.ec@divisas.com', fullName: 'Ana López (EC)', role: Role.CASHIER, officeId: officeEc.id },
+    { email: 'cajero.pe@valex.com', fullName: 'Carlos Ruiz (Perú)', role: Role.CASHIER, officeId: officePe.id },
+    { email: 'cajero.pe@divisas.com', fullName: 'Carlos Ruiz (PE)', role: Role.CASHIER, officeId: officePe.id },
+    { email: 'supervisor@valex.com', fullName: 'María Gómez (Supervisor)', role: Role.SUPERVISOR },
     { email: 'supervisor@divisas.com', fullName: 'María Gómez', role: Role.SUPERVISOR },
+    { email: 'compliance@valex.com', fullName: 'Jorge Salas (Compliance)', role: Role.COMPLIANCE },
     { email: 'compliance@divisas.com', fullName: 'Jorge Salas', role: Role.COMPLIANCE },
+    { email: 'treasury@valex.com', fullName: 'Lucía Torres (Tesorería)', role: Role.TREASURY },
     { email: 'treasury@divisas.com', fullName: 'Lucía Torres', role: Role.TREASURY },
+    { email: 'auditor@valex.com', fullName: 'Pedro Díaz (Auditor)', role: Role.AUDITOR },
     { email: 'auditor@divisas.com', fullName: 'Pedro Díaz', role: Role.AUDITOR },
+    { email: 'cliente.ec@valex.com', fullName: 'Juan Pérez (Cliente EC)', role: Role.CUSTOMER },
+    { email: 'cliente.pe@valex.com', fullName: 'Rosa Flores (Cliente PE)', role: Role.CUSTOMER },
     { email: 'juan.perez@example.com', fullName: 'Juan Pérez', role: Role.CUSTOMER },
   ];
   for (const u of users) {
@@ -212,21 +222,41 @@ async function main() {
     });
   }
 
-  // 9. Cliente demo (Juan Pérez) con KYC aprobado
-  const juan = await prisma.user.findUnique({ where: { email: 'juan.perez@example.com' } });
-  if (juan) {
+  // 9. Clientes demo con KYC aprobado
+  const clienteEc = await prisma.user.findUnique({ where: { email: 'cliente.ec@valex.com' } });
+  if (clienteEc) {
     await prisma.customer.upsert({
-      where: { userId: juan.id },
-      update: {},
+      where: { userId: clienteEc.id },
+      update: { kycStatus: 'APPROVED' },
       create: {
-        userId: juan.id,
+        userId: clienteEc.id,
         type: CustomerType.PERSON,
-        fullName: 'Juan Pérez',
+        fullName: 'Juan Pérez (Cliente EC)',
         documentType: DocumentType.CEDULA,
-        documentNumber: '1700000001',
+        documentNumber: '1104567890',
         countryId: ec.id,
-        email: 'juan.perez@example.com',
-        phone: '+593900000001',
+        email: 'cliente.ec@valex.com',
+        phone: '+593991234567',
+        kycStatus: 'APPROVED',
+        riskScore: 5,
+      },
+    });
+  }
+
+  const clientePe = await prisma.user.findUnique({ where: { email: 'cliente.pe@valex.com' } });
+  if (clientePe) {
+    await prisma.customer.upsert({
+      where: { userId: clientePe.id },
+      update: { kycStatus: 'APPROVED' },
+      create: {
+        userId: clientePe.id,
+        type: CustomerType.PERSON,
+        fullName: 'Rosa Flores (Cliente PE)',
+        documentType: DocumentType.DNI,
+        documentNumber: '45678901',
+        countryId: pe.id,
+        email: 'cliente.pe@valex.com',
+        phone: '+51987654321',
         kycStatus: 'APPROVED',
         riskScore: 5,
       },
@@ -234,7 +264,7 @@ async function main() {
   }
 
   // 10. Beneficiario demo (María Pérez, Perú)
-  const customerJuan = await prisma.customer.findUnique({ where: { userId: juan?.id ?? '' } });
+  const customerJuan = await prisma.customer.findUnique({ where: { userId: clienteEc?.id ?? '' } });
   if (customerJuan) {
     const maria = await prisma.beneficiary.upsert({
       where: { id: 'ben-maria' },

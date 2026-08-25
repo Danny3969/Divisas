@@ -22,7 +22,7 @@ interface AuthCtx {
   user: AuthUser | null;
   token: string | null;
   hydrated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ accessToken: string; user: AuthUser }>;
   logout: () => void;
 }
 
@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(res.accessToken, res.user);
     setToken(res.accessToken);
     setUser(res.user);
+    return res;
   }, []);
 
   const logout = useCallback(() => {

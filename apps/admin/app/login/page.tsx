@@ -18,8 +18,13 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
-      window.location.href = "/dashboard";
+      const auth = await login(email, password);
+      // Smart Role-Based Redirection
+      if (auth.user.role === "CASHIER") {
+        window.location.href = "/transfer/new";
+      } else {
+        window.location.href = "/dashboard";
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al iniciar sesión");
     } finally {
@@ -39,7 +44,7 @@ export default function LoginPage() {
             />
           </div>
           <p className="text-xs font-semibold tracking-widest text-[#00E5FF] uppercase">
-            Consola de Administración & Finanzas
+            Portal Unificado · Administración & Ventanilla
           </p>
         </div>
 
@@ -47,10 +52,10 @@ export default function LoginPage() {
           <form onSubmit={onSubmit} className="space-y-4 pt-2">
             {error && <Alert>{error}</Alert>}
             <Input
-              label="Correo electrónico"
+              label="Correo electrónico corporativo"
               type="email"
               autoComplete="email"
-              placeholder="admin@divisas.com"
+              placeholder="admin@valex.com o cajero.pe@valex.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -69,8 +74,11 @@ export default function LoginPage() {
               className="w-full bg-[#475569] hover:bg-slate-700 text-white font-bold py-2.5 transition-all shadow-md"
               loading={loading}
             >
-              Acceder a VALEX Admin
+              Ingresar al Sistema
             </Button>
+            <div className="text-[11px] text-center text-slate-500 pt-1">
+              Detección automática de perfil: <span className="font-semibold text-slate-700">Admin, Cajero, Supervisor, Contabilidad</span>
+            </div>
           </form>
         </Card>
       </div>

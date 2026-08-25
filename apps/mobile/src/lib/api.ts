@@ -5,8 +5,8 @@ export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   "https://solved-loud-rating-belly.trycloudflare.com/api";
 
-export const TOKEN_KEY = "divisas_token";
-export const USER_KEY = "divisas_user";
+export const TOKEN_KEY = "valex_token";
+export const USER_KEY = "valex_user";
 
 export async function getToken(): Promise<string | null> {
   try {

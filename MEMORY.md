@@ -1,17 +1,18 @@
-# 📋 MEMORY — Proyecto Divisas
-_Última actualización: 2026-08-24_
+# 📋 MEMORY — Proyecto VALEX (Cambio de Divisas & Giros Internacionales)
+_Última actualización: 2026-08-25_
 
 ## 🔗 Repositorio GitHub
 - **URL:** https://github.com/Danny3969/Divisas
 - **Rama principal:** `main`
 
-## 🏗️ Estructura del Proyecto
+## 🏗️ Arquitectura del Sistema
 ```
 /Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/
 ├── backend/          → NestJS + Prisma + PostgreSQL (puerto 3000)
 ├── apps/
-│   ├── admin/        → Next.js Consola Administración (puerto 3001)
-│   └── cashier/      → Next.js Consola de Caja (puerto 3002)
+│   ├── admin/        → Portal Web Unificado (Admin + Caja) (puerto 3001)
+│   ├── cashier/      → Consola de Caja (legada / complementaria) (puerto 3002)
+│   └── mobile/       → App Móvil React Native / Expo (com.valex.app)
 ├── ecosystem.config.js → Configuración PM2
 └── MEMORY.md
 ```
@@ -22,13 +23,16 @@ _Última actualización: 2026-08-24_
 - **ORM:** Prisma
 
 ## 👤 Usuarios del Sistema
-| Email | Contraseña | Rol | País |
+| Email | Contraseña | Rol | Acceso / Asignación |
 |---|---|---|---|
-| `admin@divisas.com` | `Divisas2026!` | ADMIN | — |
-| `cajero.pe@divisas.com` | `Divisas2026!` | CASHIER | 🇵🇪 Perú |
-| `cajero.ec@divisas.com` | `Divisas2026!` | CASHIER | 🇪🇨 Ecuador |
-| `supervisor@divisas.com` | `Divisas2026!` | SUPERVISOR | — |
-| `compliance@divisas.com` | `Divisas2026!` | COMPLIANCE | — |
+| `admin@valex.com` / `admin@divisas.com` | `Valex2026!` | ADMIN | Portal Completo (Admin + Ventanilla) |
+| `cajero.pe@valex.com` / `cajero.pe@divisas.com` | `Valex2026!` | CASHIER | 🇵🇪 Ventanilla Perú (Sullana) |
+| `cajero.ec@valex.com` / `cajero.ec@divisas.com` | `Valex2026!` | CASHIER | 🇪🇨 Ventanilla Ecuador (Macará) |
+| `supervisor@valex.com` / `supervisor@divisas.com` | `Valex2026!` | SUPERVISOR | Supervisión de Cajas y Operaciones |
+| `compliance@valex.com` / `compliance@divisas.com` | `Valex2026!` | COMPLIANCE | Cumplimiento y Aprobación KYC |
+| `treasury@valex.com` / `treasury@divisas.com` | `Valex2026!` | TREASURY | Tesorería y Bancos |
+| `cliente.ec@valex.com` | `Valex2026!` | CUSTOMER | 📱 App Móvil (Ecuador - USD) |
+| `cliente.pe@valex.com` | `Valex2026!` | CUSTOMER | 📱 App Móvil (Perú - PEN) |
 
 ## ⚙️ PM2 — Gestión de Procesos
 ```bash
@@ -37,19 +41,16 @@ npx pm2 restart all                  # Reiniciar todo
 npx pm2 status                       # Ver estado
 npx pm2 logs                         # Ver logs en tiempo real
 ```
-**Procesos PM2:** `divisas-backend`, `divisas-admin`, `divisas-cashier`, 
-`divisas-tunnel-backend`, `divisas-tunnel-admin`, `divisas-tunnel-cashier`
 
 ## 🌐 URLs Locales (siempre disponibles)
 - **Backend API:** http://localhost:3000/api
-- **Admin:** http://localhost:3001
-- **Caja:** http://localhost:3002
+- **Portal Web Unificado (Admin + Caja):** http://localhost:3001
+- **Caja (puerto independiente):** http://localhost:3002
 
 ## 🌍 URLs Públicas Activas (Cloudflare Tunnels)
-- **Consola de Administración (Admin):** https://volume-dialogue-down-stop.trycloudflare.com
-- **Consola de Caja (Cashier):** https://campaign-gloves-entitled-parks.trycloudflare.com
-- **Backend API:** https://solved-loud-rating-belly.trycloudflare.com/api
-- **Descarga Directa APK Móvil (Android):** https://volume-dialogue-down-stop.trycloudflare.com/downloads/Divisas.apk
+- **Portal Web Unificado (Admin & Caja):** https://fall-earnings-hopkins-statistical.trycloudflare.com
+- **Backend API:** https://drag-bacon-southampton-consideration.trycloudflare.com/api
+- **Descarga Directa APK Móvil (Android):** https://fall-earnings-hopkins-statistical.trycloudflare.com/downloads/VALEX.apk
 
 ## 📱 Aplicación Móvil Android (APK)
 - **Ruta Local del APK:** `/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/aplicaciones/mobile/VALEX-v1.0.0.apk`
