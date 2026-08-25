@@ -38,20 +38,46 @@ export class QuotesService {
 
     // Dynamic Fee Calculation based on PEN Soles Tier
     const feeResult = await this.fees.calculateFee(corridor.direction, dto.sendAmount, sellRate);
-    const netSend = dto.sendAmount - feeResult.feeAmount;
-    if (netSend <= 0) throw new BadRequestException('El monto enviado debe superar la comisión');
+    
+    let totalSendAmount = dto.sendAmount;
+    let receiveAmount = 0;
+    let feeAmount = feeResult.feeAmount;
+    let feeCurrency = feeResult.feeCurrency;
 
-    const receiveAmount = Math.round(netSend * sellRate * 100) / 100;
+    if (corridor.direction === 'EC_TO_PE') {
+      // Ecuador (USD) -> Peru (PEN)
+      // Origen cobra: Monto deseado + comisión origen ($1 USD según tramo)
+      // Destino entrega: (Monto deseado * TC) - comisión destino (S/. 3.75 según tramo)
+      totalSendAmount = Math.round((dto.sendAmount + feeResult.feeUsd) * 100) / 100;
+      const grossPen = dto.sendAmount * sellRate;
+      receiveAmount = Math.round((grossPen - feeResult.feePen) * 100) / 100;
+      feeAmount = feeResult.feeUsd;
+      feeCurrency = 'USD';
+    } else {
+      // Peru (PEN) -> Ecuador (USD)
+      // Origen cobra: Monto deseado + comisión origen (S/. 3.75 según tramo)
+      // Destino entrega: (Monto deseado / TC) - comisión destino ($1 USD según tramo)
+      totalSendAmount = Math.round((dto.sendAmount + feeResult.feePen) * 100) / 100;
+      const grossUsd = dto.sendAmount / sellRate;
+      receiveAmount = Math.round((grossUsd - feeResult.feeUsd) * 100) / 100;
+      feeAmount = feeResult.feePen;
+      feeCurrency = 'PEN';
+    }
+
+    if (receiveAmount <= 0) {
+      throw new BadRequestException('El monto a entregar debe ser mayor a 0 tras descontar la comisión');
+    }
+
     const expiresAt = new Date(Date.now() + QUOTE_TTL_MINUTES * 60 * 1000);
 
     const quote = await this.prisma.quote.create({
       data: {
         corridorId: corridor.id,
         fxRateId: rate.id,
-        sendAmount: dto.sendAmount,
+        sendAmount: totalSendAmount,
         sendCurrency: dto.sendCurrency,
-        feeAmount: feeResult.feeAmount,
-        feeCurrency: feeResult.feeCurrency,
+        feeAmount,
+        feeCurrency,
         fxRate: sellRate,
         receiveAmount,
         receiveCurrency: corridor.toCurrency,

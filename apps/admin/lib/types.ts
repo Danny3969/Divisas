@@ -109,6 +109,7 @@ export interface Quote {
   receiveAmount: number;
   receiveCurrency: string;
   feeAmount: number;
+  feeCurrency?: string;
   fxRate: string;
   expiresAt: string;
   status: string;
