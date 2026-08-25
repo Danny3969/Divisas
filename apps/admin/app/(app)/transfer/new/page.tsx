@@ -414,6 +414,7 @@ export default function NewTransferPage() {
   const [bankOrigin, setBankOrigin] = useState("Banco Pichincha");
   const [bankRefNumber, setBankRefNumber] = useState("");
   const [voucherPreview, setVoucherPreview] = useState<string | null>(null);
+  const [bankVerified, setBankVerified] = useState(false);
 
   // Send amount (starts empty/zero)
   const [sendAmount, setSendAmount] = useState("");
@@ -554,6 +555,10 @@ export default function NewTransferPage() {
     }
     if (paymentMethod === "BANK_TRANSFER" && !bankRefNumber.trim()) {
       alert("Para pago por transferencia bancaria debe ingresar el número de operación o referencia del comprobante.");
+      return;
+    }
+    if (paymentMethod === "BANK_TRANSFER" && !bankVerified) {
+      alert("⚠️ ATENCIÓN: Debe ingresar a la banca móvil o portal de la empresa y confirmar que los fondos están acreditados en la cuenta bancaria de VALEX marcando la casilla de 'Transferencia Bancaria Validada en Cuenta' para continuar.");
       return;
     }
 
@@ -1087,6 +1092,52 @@ export default function NewTransferPage() {
                         <img src={voucherPreview} alt="Vista previa del comprobante" className="max-h-36 rounded object-contain" />
                       </div>
                     )}
+                  </div>
+
+                  {/* BANK TRANSFER VERIFICATION CONFIRMATION (MANDATORY REQUIREMENT) */}
+                  <div className={`p-4 rounded-xl border-2 transition-all ${bankVerified ? "bg-emerald-50/90 border-emerald-400 shadow-xs" : "bg-amber-50/90 border-amber-300 shadow-xs"}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{bankVerified ? "✅" : "⚠️"}</span>
+                        <span className="text-xs font-black uppercase tracking-wide text-slate-900">
+                          Confirmación de Verificación Bancaria
+                        </span>
+                      </div>
+                      <Badge className={bankVerified ? "bg-emerald-200 text-emerald-950 font-black text-[11px]" : "bg-amber-200 text-amber-950 font-black text-[11px]"}>
+                        {bankVerified ? "✓ FONDOS VERIFICADOS EN CUENTA" : "PENDIENTE DE VERIFICAR EN BANCA MÓVIL"}
+                      </Badge>
+                    </div>
+
+                    <p className="text-xs text-slate-700 mt-2 leading-relaxed">
+                      Para garantizar la seguridad de los fondos, el operador debe ingresar a la aplicación bancaria de la empresa y verificar que el dinero figure efectivamente acreditado en el estado de cuenta de VALEX.
+                    </p>
+
+                    <div className="mt-3 pt-3 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={bankVerified}
+                          onChange={(e) => setBankVerified(e.target.checked)}
+                          className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-extrabold text-slate-900">
+                          Confirmo que verifiqué el abono en la cuenta bancaria de VALEX
+                        </span>
+                      </label>
+
+                      <Button
+                        type="button"
+                        variant={bankVerified ? "secondary" : "primary"}
+                        onClick={() => setBankVerified(!bankVerified)}
+                        className={`text-xs font-black py-1.5 px-3 rounded-lg transition-all ${
+                          bankVerified
+                            ? "border-emerald-500 text-emerald-900 bg-emerald-100 hover:bg-emerald-200"
+                            : "bg-amber-600 hover:bg-amber-700 text-white font-black shadow-xs"
+                        }`}
+                      >
+                        {bankVerified ? "✓ Transferencia Bancaria Validada" : "⚡ Marcar Transferencia Validada"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

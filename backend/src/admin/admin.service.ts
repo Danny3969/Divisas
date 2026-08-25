@@ -14,28 +14,140 @@ export class AdminService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [totalTransfers, todayTransfers, byStatus, pendingCount, cashAccounts, ledgerAccounts, auditRecent, feeIncome] =
-      await Promise.all([
-        this.prisma.transfer.count(),
-        this.prisma.transfer.count({ where: { createdAt: { gte: todayStart } } }),
-        this.prisma.transfer.groupBy({ by: ['status'], _count: true }),
-        this.prisma.transfer.count({
-          where: {
-            status: {
-              in: [TransferStatus.AWAITING_PAYMENT, TransferStatus.PAYMENT_RECEIVED, TransferStatus.MANUAL_REVIEW, TransferStatus.AML_REVIEW, TransferStatus.RISK_BLOCKED, TransferStatus.PAYOUT_PROCESSING],
-            },
+    const [
+      totalTransfers,
+      todayTransfers,
+      byStatus,
+      pendingCount,
+      cashAccounts,
+      ledgerAccounts,
+      auditRecent,
+      feeIncome,
+      allTransfers,
+    ] = await Promise.all([
+      this.prisma.transfer.count(),
+      this.prisma.transfer.count({ where: { createdAt: { gte: todayStart } } }),
+      this.prisma.transfer.groupBy({ by: ['status'], _count: true }),
+      this.prisma.transfer.count({
+        where: {
+          status: {
+            in: [
+              TransferStatus.AWAITING_PAYMENT,
+              TransferStatus.PAYMENT_RECEIVED,
+              TransferStatus.MANUAL_REVIEW,
+              TransferStatus.AML_REVIEW,
+              TransferStatus.RISK_BLOCKED,
+              TransferStatus.SETTLEMENT_PENDING,
+              TransferStatus.PAYOUT_PROCESSING,
+            ],
           },
-        }),
-        this.prisma.cashAccount.findMany({ include: { office: { include: { country: true } } } }),
-        this.prisma.ledgerAccount.findMany({ orderBy: { code: 'asc' } }),
-        this.prisma.auditLog.findMany({ include: { actor: true }, orderBy: { createdAt: 'desc' }, take: 20 }),
-        this.prisma.ledgerEntry.findMany({
-          where: { account: { is: { type: 'INCOME' } } },
-          include: { account: true },
-        }),
-      ]);
+        },
+      }),
+      this.prisma.cashAccount.findMany({ include: { office: { include: { country: true } } } }),
+      this.prisma.ledgerAccount.findMany({ orderBy: { code: 'asc' } }),
+      this.prisma.auditLog.findMany({ include: { actor: true }, orderBy: { createdAt: 'desc' }, take: 20 }),
+      this.prisma.ledgerEntry.findMany({
+        where: { account: { is: { type: 'INCOME' } } },
+        include: { account: true },
+      }),
+      this.prisma.transfer.findMany({
+        select: {
+          id: true,
+          sendAmount: true,
+          sendCurrency: true,
+          receiveAmount: true,
+          receiveCurrency: true,
+          feeAmount: true,
+          feeCurrency: true,
+          paymentMethod: true,
+          payoutMethod: true,
+          status: true,
+          createdAt: true,
+          corridor: { select: { direction: true } },
+        },
+      }),
+    ]);
 
-    const totals = { USD: 0, PEN: 0 };
+    // Breakdown by payment method (Efectivo vs Transferencia Bancaria)
+    const paymentBreakdown = {
+      cash: { count: 0, totalUSD: 0, totalPEN: 0 },
+      bank: { count: 0, totalUSD: 0, totalPEN: 0 },
+    };
+
+    // Breakdown by payout method (Efectivo vs Yape vs Banco)
+    const payoutBreakdown = {
+      cash: { count: 0, totalUSD: 0, totalPEN: 0 },
+      yape: { count: 0, totalPEN: 0 },
+      bank: { count: 0, totalUSD: 0, totalPEN: 0 },
+    };
+
+    // Total fees breakdown
+    const feesBreakdown = {
+      totalUSD: 0,
+      totalPEN: 0,
+      todayUSD: 0,
+      todayPEN: 0,
+    };
+
+    // Volume by corridor
+    const corridorVolume = {
+      ecToPe: { count: 0, sendUSD: 0, receivePEN: 0 },
+      peToEc: { count: 0, sendPEN: 0, receiveUSD: 0 },
+    };
+
+    for (const t of allTransfers) {
+      const sendAmt = Number(t.sendAmount);
+      const recAmt = Number(t.receiveAmount);
+      const feeAmt = Number(t.feeAmount);
+      const isToday = new Date(t.createdAt) >= todayStart;
+
+      // Payment method
+      if (t.paymentMethod === 'BANK_TRANSFER') {
+        paymentBreakdown.bank.count++;
+        if (t.sendCurrency === 'USD') paymentBreakdown.bank.totalUSD += sendAmt;
+        else paymentBreakdown.bank.totalPEN += sendAmt;
+      } else {
+        paymentBreakdown.cash.count++;
+        if (t.sendCurrency === 'USD') paymentBreakdown.cash.totalUSD += sendAmt;
+        else paymentBreakdown.cash.totalPEN += sendAmt;
+      }
+
+      // Payout method
+      if (t.payoutMethod === 'MOBILE_WALLET') {
+        payoutBreakdown.yape.count++;
+        payoutBreakdown.yape.totalPEN += recAmt;
+      } else if (t.payoutMethod === 'BANK') {
+        payoutBreakdown.bank.count++;
+        if (t.receiveCurrency === 'USD') payoutBreakdown.bank.totalUSD += recAmt;
+        else payoutBreakdown.bank.totalPEN += recAmt;
+      } else {
+        payoutBreakdown.cash.count++;
+        if (t.receiveCurrency === 'USD') payoutBreakdown.cash.totalUSD += recAmt;
+        else payoutBreakdown.cash.totalPEN += recAmt;
+      }
+
+      // Fees
+      const feeCur = t.feeCurrency || t.sendCurrency;
+      if (feeCur === 'USD') {
+        feesBreakdown.totalUSD += feeAmt;
+        if (isToday) feesBreakdown.todayUSD += feeAmt;
+      } else {
+        feesBreakdown.totalPEN += feeAmt;
+        if (isToday) feesBreakdown.todayPEN += feeAmt;
+      }
+
+      // Corridor
+      if (t.corridor?.direction === 'EC_TO_PE') {
+        corridorVolume.ecToPe.count++;
+        corridorVolume.ecToPe.sendUSD += sendAmt;
+        corridorVolume.ecToPe.receivePEN += recAmt;
+      } else if (t.corridor?.direction === 'PE_TO_EC') {
+        corridorVolume.peToEc.count++;
+        corridorVolume.peToEc.sendPEN += sendAmt;
+        corridorVolume.peToEc.receiveUSD += recAmt;
+      }
+    }
+
     const volumeByCurrency = await this.prisma.transfer.aggregate({
       _sum: { sendAmount: true },
       where: { createdAt: { gte: todayStart } },
@@ -43,22 +155,37 @@ export class AdminService {
 
     const income = incomeByCurrency(feeIncome);
 
+    // Bank accounts from ledger (1010-EC, 1011-EC, 1010-PE)
+    const bankAccounts = ledgerAccounts
+      .filter((a) => a.code.startsWith('1010') || a.code.startsWith('1011'))
+      .map((a) => ({
+        id: a.id,
+        code: a.code,
+        name: a.name,
+        currency: a.currency,
+        balance: Number(a.balance),
+      }));
+
     return {
       totalTransfers,
       todayTransfers,
       todayVolumeSendAmount: volumeByCurrency._sum.sendAmount,
       byStatus,
       pendingCount,
+      paymentBreakdown,
+      payoutBreakdown,
+      feesBreakdown,
+      corridorVolume,
+      bankAccounts,
       cashAccounts: cashAccounts.map((c) => ({
         code: c.code,
         currency: c.currency,
-        balance: c.balance,
-        country: c.office.country.code,
+        balance: Number(c.balance),
+        country: c.office?.country?.code ?? 'EC',
       })),
       ledgerAccounts,
       income,
       auditRecent,
-      totals,
     };
   }
 
