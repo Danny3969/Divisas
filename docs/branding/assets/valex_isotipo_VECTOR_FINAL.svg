@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <!-- Fondo oscuro con bordes redondeados -->
+  <rect width="1000" height="1000" fill="#2C3140" rx="28"/>
+  <!-- Flecha BLANCA — capa inferior (detrás del cyan) -->
+  <polygon points="52.00,52.00 114.23,300.90 177.87,237.26 762.74,822.13 699.10,885.77 948.00,948.00 885.77,699.10 822.13,762.74 237.26,177.87 300.90,114.23" fill="#FFFFFF"/>
+  <!-- Flecha CYAN — capa superior (encima del blanco en el cruce) -->
+  <polygon points="52.00,948.00 300.90,885.77 237.26,822.13 822.13,237.26 885.77,300.90 948.00,52.00 699.10,114.23 762.74,177.87 177.87,762.74 114.23,699.10" fill="#00E5FF"/>
+</svg>
