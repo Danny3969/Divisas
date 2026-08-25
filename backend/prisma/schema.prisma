@@ -850,3 +850,22 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([actorId])
 }
+
+// ============ COMISIONES / TARIFAS ============
+
+model FeeTier {
+  id                String             @id @default(uuid())
+  minAmountPen      Decimal            @db.Decimal(18, 2)
+  maxAmountPen      Decimal            @db.Decimal(18, 2)
+  feeUsd            Decimal            @db.Decimal(18, 2)
+  feePen            Decimal?           @db.Decimal(18, 2)
+  corridorDirection CorridorDirection?
+  description       String?
+  active            Boolean            @default(true)
+  orderIndex        Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([active, minAmountPen, maxAmountPen])
+}
+

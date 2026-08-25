@@ -1,23 +1,20 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
+import { FeesService } from '../fees/fees.service';
 import { CreateQuoteDto } from './dto/quote.dto';
 import { AuthUser } from '../common/current-user.decorator';
-import { CorridorDirection, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 
 export const QUOTE_TTL_MINUTES = 5;
 
-// Regla de comisión plana por corredor (configurable en fases posteriores)
-export function feeForCorridor(direction: CorridorDirection): { fee: number; currency: string } {
-  if (direction === CorridorDirection.EC_TO_PE) {
-    return { fee: 4, currency: 'USD' };
-  }
-  return { fee: 14, currency: 'PEN' };
-}
-
 @Injectable()
 export class QuotesService {
-  constructor(private prisma: PrismaService, private fx: FxService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fx: FxService,
+    private fees: FeesService,
+  ) {}
 
   async create(dto: CreateQuoteDto, actor?: AuthUser) {
     const corridor = await this.prisma.corridor.findUnique({
@@ -37,11 +34,13 @@ export class QuotesService {
     }
 
     const rate = corridor.fxRates[0];
-    const fee = feeForCorridor(corridor.direction);
-    const netSend = dto.sendAmount - fee.fee;
+    const sellRate = Number(rate.sellRate);
+
+    // Dynamic Fee Calculation based on PEN Soles Tier
+    const feeResult = await this.fees.calculateFee(corridor.direction, dto.sendAmount, sellRate);
+    const netSend = dto.sendAmount - feeResult.feeAmount;
     if (netSend <= 0) throw new BadRequestException('El monto enviado debe superar la comisión');
 
-    const sellRate = Number(rate.sellRate);
     const receiveAmount = Math.round(netSend * sellRate * 100) / 100;
     const expiresAt = new Date(Date.now() + QUOTE_TTL_MINUTES * 60 * 1000);
 
@@ -51,8 +50,8 @@ export class QuotesService {
         fxRateId: rate.id,
         sendAmount: dto.sendAmount,
         sendCurrency: dto.sendCurrency,
-        feeAmount: fee.fee,
-        feeCurrency: fee.currency,
+        feeAmount: feeResult.feeAmount,
+        feeCurrency: feeResult.feeCurrency,
         fxRate: sellRate,
         receiveAmount,
         receiveCurrency: corridor.toCurrency,

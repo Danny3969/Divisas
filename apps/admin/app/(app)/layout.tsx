@@ -14,6 +14,7 @@ const ADMIN_NAV = [
   { href: "/beneficiaries", label: "Beneficiarios", icon: "👤" },
   { href: "/users", label: "Usuarios & Roles", icon: "🛡️" },
   { href: "/fx", label: "Tasas FX & Spreads", icon: "📈" },
+  { href: "/fees", label: "Comisiones", icon: "🏷️" },
   { href: "/treasury", label: "Tesorería", icon: "🏦" },
   { href: "/ledger", label: "Contabilidad", icon: "📖" },
   { href: "/cash", label: "Bóvedas & Cajas", icon: "🏧" },

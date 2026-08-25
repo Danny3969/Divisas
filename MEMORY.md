@@ -48,9 +48,9 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Caja (puerto independiente):** http://localhost:3002
 
 ## 🌍 URLs Públicas Activas (Cloudflare Tunnels)
-- **Portal Web Unificado (Admin & Caja):** https://fall-earnings-hopkins-statistical.trycloudflare.com
-- **Backend API:** https://drag-bacon-southampton-consideration.trycloudflare.com/api
-- **Descarga Directa APK Móvil (Android):** https://fall-earnings-hopkins-statistical.trycloudflare.com/downloads/VALEX.apk
+- **Portal Web Unificado (Admin & Caja):** https://bet-kansas-organizations-followed.trycloudflare.com
+- **Backend API:** https://volume-cartridge-previews-cigarettes.trycloudflare.com/api
+- **Descarga Directa APK Móvil (Android):** https://bet-kansas-organizations-followed.trycloudflare.com/downloads/VALEX.apk
 
 ## 📱 Aplicación Móvil Android (APK)
 - **Ruta Local del APK:** `/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/aplicaciones/mobile/VALEX-v1.0.0.apk`
@@ -64,6 +64,18 @@ npx pm2 logs                         # Ver logs en tiempo real
 
 
 ## 🚀 Funcionalidades Implementadas
+
+### Módulo de Comisiones por Tramos en Soles (`/fees`)
+- [x] **Tabla Dinámica y Escalonada por Tramos en Soles (PEN):**
+  - **1 a 500 soles:** $1.00 USD
+  - **501 a 1,000 soles:** $2.00 USD
+  - **1,001 a 2,000 soles:** $3.00 USD
+  - **2,001 a 5,000 soles:** $4.00 USD
+  - **5,001 a 10,000 soles:** $5.00 USD
+  - **Más de 10,000 soles:** $6.00 USD (configurable)
+- [x] **Panel Web CRUD Completo:** Creación, edición, activación/desactivación y eliminación de tramos en vivo.
+- [x] **Simulador Interactivo:** Cálculo en tiempo real de equivalencia en soles, tramo aplicado, comisión y neto a entregar.
+- [x] **Cobro Simétrico en Ambas Puntas:** Ambas cajas (Ecuador y Perú) operan bajo la misma regla de comisiones en ventanilla y cotizaciones.
 
 ### Módulo de Contabilidad Empresarial y Tesorería (`/ledger`)
 - [x] **Configuración de Saldos Reales Iniciales / Purga Limpia:**

@@ -15,6 +15,7 @@ import { LedgerModule } from './ledger/ledger.module';
 import { TreasuryModule } from './treasury/treasury.module';
 import { AdminModule } from './admin/admin.module';
 import { AccountingModule } from './accounting/accounting.module';
+import { FeesModule } from './fees/fees.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AccountingModule } from './accounting/accounting.module';
     LedgerModule,
     TreasuryModule,
     AccountingModule,
+    FeesModule,
     AdminModule,
   ],
 })

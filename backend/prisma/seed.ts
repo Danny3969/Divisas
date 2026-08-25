@@ -318,8 +318,27 @@ async function main() {
     });
   }
 
+  // 13. Tramos de comisiones oficiales VALEX
+  const feeTiers = [
+    { minAmountPen: 1, maxAmountPen: 500, feeUsd: 1, feePen: 3.75, description: 'De 1 a 500 soles ($1 USD)', orderIndex: 1 },
+    { minAmountPen: 501, maxAmountPen: 1000, feeUsd: 2, feePen: 7.50, description: 'De 501 a 1000 soles ($2 USD)', orderIndex: 2 },
+    { minAmountPen: 1001, maxAmountPen: 2000, feeUsd: 3, feePen: 11.25, description: 'De 1001 a 2000 soles ($3 USD)', orderIndex: 3 },
+    { minAmountPen: 2001, maxAmountPen: 5000, feeUsd: 4, feePen: 15.00, description: 'De 2001 a 5000 soles ($4 USD)', orderIndex: 4 },
+    { minAmountPen: 5001, maxAmountPen: 10000, feeUsd: 5, feePen: 18.75, description: 'De 5001 a 10000 soles ($5 USD)', orderIndex: 5 },
+    { minAmountPen: 10001, maxAmountPen: 50000, feeUsd: 6, feePen: 22.50, description: 'Más de 10000 soles ($6 USD)', orderIndex: 6 },
+  ];
+
+  for (const tier of feeTiers) {
+    const existing = await prisma.feeTier.findFirst({
+      where: { minAmountPen: tier.minAmountPen, maxAmountPen: tier.maxAmountPen },
+    });
+    if (!existing) {
+      await prisma.feeTier.create({ data: tier });
+    }
+  }
+
   console.log('=== SEED COMPLETADO ===');
-  console.log('Usuarios demo (password: Divisas2026!):');
+  console.log('Usuarios demo (password: Divisas2026! / Valex2026!):');
   for (const u of users) console.log(`  ${u.email}  ->  ${u.role}`);
 }
 

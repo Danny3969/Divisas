@@ -47,6 +47,20 @@ export interface Corridor {
   active: boolean;
 }
 
+export interface FeeTier {
+  id: string;
+  minAmountPen: string | number;
+  maxAmountPen: string | number;
+  feeUsd: string | number;
+  feePen?: string | number | null;
+  corridorDirection?: "EC_TO_PE" | "PE_TO_EC" | null;
+  description?: string | null;
+  active: boolean;
+  orderIndex: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Customer {
   id: string;
   fullName: string;
