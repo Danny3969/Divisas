@@ -71,9 +71,14 @@ export default function RegisterScreen() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: 24, fontWeight: "800", color: COLORS.slate900, marginBottom: 16 }}>
-        Crear cuenta
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <Text style={{ fontSize: 24, fontWeight: "800", color: COLORS.slate900 }}>
+          Crear cuenta
+        </Text>
+        <View style={{ backgroundColor: "#475569", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+          <Text style={{ color: "#00E5FF", fontWeight: "900", fontSize: 12, letterSpacing: 1 }}>VALEX</Text>
+        </View>
+      </View>
       <Card>
         {error && <Alert>{error}</Alert>}
         <Input label="Nombre completo" value={fullName} onChangeText={setFullName} />

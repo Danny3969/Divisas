@@ -52,10 +52,11 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Descarga Directa APK Móvil (Android):** https://volume-dialogue-down-stop.trycloudflare.com/downloads/Divisas.apk
 
 ## 📱 Aplicación Móvil Android (APK)
-- **Ruta Local del APK:** `/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/aplicaciones/mobile/Divisas-v1.0.0.apk`
-- **Descarga Web:** `http://localhost:3001/downloads/Divisas.apk`
+- **Ruta Local del APK:** `/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/aplicaciones/mobile/VALEX-v1.0.0.apk`
+- **Descarga Web:** `http://localhost:3001/downloads/VALEX.apk`
 - **Tamaño:** 103 MB
-- **Configuración:** Conectado a la API pública / local para envíos de giros, registro de clientes, cotizaciones y seguimiento de transacciones.
+- **Package Android:** `com.valex.app`
+- **Configuración:** Conectado a la API pública / local con la identidad y el icono oficial de VALEX.
 
 > Para consultar URLs si se reinician los túneles:
 > `grep "trycloudflare.com" ~/.pm2/logs/divisas-tunnel-admin-error.log | tail -n 1`
@@ -88,7 +89,7 @@ npx pm2 logs                         # Ver logs en tiempo real
 ### Consola de Caja (`apps/cashier`)
 - [x] Proxy de API integrado en `next.config.ts`.
 - [x] Nueva Transferencia con 3 métodos: **Efectivo**, **Yape**, **Cuenta Bancaria**.
-- [x] Identificación visual por país (🇵🇪 Rojo / 🇪🇨 Amarillo).
+- [x] Identificación visual por país (🇵🇪 Rojo / 🇪🇨 Amarillo) con cabecera y logo VALEX.
 - [x] Prefijos de teléfono automáticos (+51 / +593).
 
 ### Consola de Administración (`apps/admin`)
@@ -100,17 +101,24 @@ npx pm2 logs                         # Ver logs en tiempo real
   - Eliminar usuarios con confirmación y protección de cuenta superadmin.
   - Restablecer contraseña individual.
 - [x] Sección **Contabilidad** con panel interactivo de 7 pestañas.
+- [x] Botón de descarga de APK **VALEX.apk** integrado en la barra lateral.
 
 ## 🏛️ Identidad de Marca Oficial — VALEX
-- **Nombre Seleccionado:** **VALEX** *(Valor + Exchange)*
+- **Nombre Oficial:** **VALEX** *(Valor + Exchange)*
 - **Eslogan:** *Tu dinero con más valor.*
 - **Isotipo Oficial:** *Dynamic Exchange X* (Flechas dinámicas de intercambio transfronterizo).
 - **Tipografía Oficial:** Fuente geométrica sans-serif moderna con cortes tecnológicos en **A** y **E**.
+- **Paleta Cromática Oficial:**
+  - **Cyan Eléctrico:** `#00E5FF`
+  - **Blanco Puro:** `#FFFFFF`
+  - **Slate Plomo:** `#475569`
 - **Manual de Marca & Assets:** [`docs/branding/MANUAL_DE_MARCA_VALEX.md`](docs/branding/MANUAL_DE_MARCA_VALEX.md)
-  - Carpeta de activos visuales y mockups en alta resolución: `docs/branding/assets/`
-- **Tareas Pendientes:**
-  - [ ] Selección final de la paleta oficial (Aurora Fintech / Gold Prestige / Hyper Clean / Cobalt Caribbean).
-  - [ ] Rebranding en el código (Admin, Cashier, Mobile APK `com.valex.app`).
+  - Carpeta de activos visuales, iconos y mockups en alta resolución: `docs/branding/assets/`
+- **Implementación Completada:**
+  - [x] Consola de Administración (`apps/admin`) con branding, favicon, logo e isotipo en fondo plomo.
+  - [x] Consola de Caja (`apps/cashier`) con branding, favicon, logo e isotipo en fondo plomo.
+  - [x] App Móvil Android (`apps/mobile`, `com.valex.app`) con nuevo ícono, splash screen y binario `VALEX-v1.0.0.apk`.
+  - [x] Plantillas de tickets y notificaciones WhatsApp actualizadas a VALEX.
 
 ## 📝 Notas Técnicas
 - **Normalización de teléfonos:** `normalizePhone()` en `lib/format.ts` (cashier y admin)

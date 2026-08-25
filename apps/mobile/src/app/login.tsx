@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Alert, Button, Card, COLORS, Input, Screen } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
@@ -31,16 +31,20 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen style={{ justifyContent: "center" }}>
-      <View style={{ marginBottom: 24 }}>
-        <Text style={{ fontSize: 32, fontWeight: "800", color: COLORS.primary }}>
-          Divisas
+    <Screen style={{ justifyContent: "center", backgroundColor: "#475569" }}>
+      <View style={{ alignItems: "center", marginBottom: 24 }}>
+        <Image
+          source={require("../../assets/images/splash-icon.png")}
+          style={{ width: 84, height: 84, resizeMode: "contain", marginBottom: 12, borderRadius: 20 }}
+        />
+        <Text style={{ fontSize: 32, fontWeight: "900", color: "#FFFFFF", letterSpacing: 2 }}>
+          VALEX
         </Text>
-        <Text style={{ color: COLORS.slate600, fontSize: 15 }}>
-          Envía dinero entre Ecuador y Perú
+        <Text style={{ color: "#00E5FF", fontSize: 13, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" }}>
+          Cambio de Divisas & Giros
         </Text>
       </View>
-      <Card>
+      <Card style={{ backgroundColor: "#FFFFFF", borderRadius: 16, padding: 20 }}>
         {error && <Alert>{error}</Alert>}
         <Input
           label="Correo electrónico"
@@ -57,17 +61,17 @@ export default function LoginScreen() {
           secureTextEntry
           placeholder="••••••••"
         />
-        <Button title="Iniciar sesión" onPress={submit} loading={loading} />
+        <Button title="Ingresar a VALEX" onPress={submit} loading={loading} />
         <Text
           onPress={() => router.push("/register")}
           style={{
             textAlign: "center",
             marginTop: 16,
-            color: COLORS.primary,
-            fontWeight: "600",
+            color: "#475569",
+            fontWeight: "700",
           }}
         >
-          ¿No tienes cuenta? Regístrate
+          ¿No tienes cuenta? <Text style={{ color: "#0284c7" }}>Regístrate</Text>
         </Text>
       </Card>
     </Screen>

@@ -158,7 +158,7 @@ export default function OperationDetailScreen() {
               <View style={{ backgroundColor: COLORS.white, padding: 10, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: COLORS.slate200 }}>
                 <Text style={{ fontWeight: "700", color: COLORS.slate900 }}>🏦 Banco Pichincha (Ecuador)</Text>
                 <Text style={{ color: COLORS.slate600, fontSize: 13 }}>Cta Corriente: <Text style={{ fontWeight: "700" }}>2100123456</Text></Text>
-                <Text style={{ color: COLORS.slate600, fontSize: 13 }}>Titular: Divisas Ecuador S.A.</Text>
+                <Text style={{ color: COLORS.slate600, fontSize: 13 }}>Titular: VALEX Ecuador S.A.</Text>
                 <View style={{ height: 6 }} />
                 <Text style={{ fontWeight: "700", color: COLORS.slate900 }}>🏦 Banco Guayaquil (Alternativo)</Text>
                 <Text style={{ color: COLORS.slate600, fontSize: 13 }}>Cta Corriente: <Text style={{ fontWeight: "700" }}>1100987654</Text></Text>
@@ -168,7 +168,7 @@ export default function OperationDetailScreen() {
                 <Text style={{ fontWeight: "700", color: COLORS.slate900 }}>🏦 BCP - Banco de Crédito del Perú</Text>
                 <Text style={{ color: COLORS.slate600, fontSize: 13 }}>Cta Corriente PEN: <Text style={{ fontWeight: "700" }}>191-98765432-0-12</Text></Text>
                 <Text style={{ color: COLORS.slate600, fontSize: 13 }}>CCI: <Text style={{ fontWeight: "700" }}>00219100123456789012</Text></Text>
-                <Text style={{ color: COLORS.slate600, fontSize: 13 }}>Titular: Divisas Perú S.A.C.</Text>
+                <Text style={{ color: COLORS.slate600, fontSize: 13 }}>Titular: VALEX Perú S.A.C.</Text>
               </View>
             )}
 

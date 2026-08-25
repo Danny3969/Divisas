@@ -30,39 +30,41 @@
 
 ---
 
-## 3. 🎨 Exploración de Paletas de Color
+## 3. 🎨 Paleta Cromática Oficial: Hyper Clean & Slate Plomo
 
-Se han generado y evaluado 4 esquemas cromáticos de alto impacto basados en neuromarketing:
+La identidad oficial de VALEX utiliza la paleta **Hyper Clean** combinada con el fondo neutro elegante **Slate Plomo**:
 
-| Paleta | Colores Principales | Códigos Hex | Psicología de Marca |
-| :--- | :--- | :---: | :--- |
-| **1. Aurora Fintech** | Cyan Eléctrico + Verde Esmeralda Neón | `#06B6D4` / `#10B981` | Máxima energía digital, neobanco moderno, crecimiento de dinero y transferencias inmediatas. |
-| **2. Gold Prestige** | Oro Champagne + Azul Real Imperial | `#D4AF37` / `#1E40AF` | Prestigio, riqueza, banca de inversión, respaldo patrimonial de máxima solvencia. |
-| **3. Hyper Clean** | Aqua Cyan + Blanco Titanio Puro | `#00E5FF` / `#FFFFFF` | Ultra-minimalista, transparencia absoluta en comisiones y tasas de cambio. |
-| **4. Cobalt Caribbean** | Azul Cobalto Real + Turquesa Caribeño | `#1E40AF` / `#14B8A6` | Fresca, accesible, alto contraste para visibilidad en carteles exteriores de frontera. |
-
----
-
-## 4. 🖼️ Galería de Recursos y Mockups de Marca
-
-Todos los activos visuales en alta resolución (8K) se encuentran almacenados en:  
-📁 `docs/branding/assets/`
-
-1. **Brand Identity Board Principal:** `docs/branding/assets/valex_brand_identity_board_*.jpg`
-2. **Fachada de Agencia Física / Sede Comercial en Frontera:** `docs/branding/assets/valex_storefront_mockup_*.jpg`
-3. **Exploración de Isotipos en 'X':** `docs/branding/assets/valex_fintech_x_variations_*.jpg`
-4. **Mockup de App Móvil Fintech (Modo Oscuro / Modo Claro + Tarjeta):** `docs/branding/assets/valex_mobile_fintech_showcase_*.jpg`
-5. **Brochure y Folleto Corporativo de Servicios:** `docs/branding/assets/valex_corporate_brochure_mockup_*.jpg`
-6. **Recepción Corporativa 3D:** `docs/branding/assets/valex_office_reception_mockup_*.jpg`
-7. **Comparativa de las 4 Paletas de Color:** `docs/branding/assets/valex_4_palettes_comparison_*.jpg`
-8. **Mockup de Íconos de App y Tarjetas Físicas en las 4 Paletas:** `docs/branding/assets/valex_4_palettes_cards_mockup_*.jpg`
+| Color | Código Hex | RGB | Función de Marca |
+| :--- | :---: | :---: | :--- |
+| **Cyan Eléctrico (Principal)** | `#00E5FF` | `(0, 229, 255)` | Isotipo izquierdo, botones activos, acentos tecnológicos y llamadas a la acción. |
+| **Blanco Titanio (Contraste)** | `#FFFFFF` | `(255, 255, 255)` | Isotipo derecho, tipografía de marca VALEX, tarjetas de contenido. |
+| **Plomo / Slate Gray (Fondo)** | `#475569` | `(71, 85, 105)` | Fondo corporativo elegante, cabeceras, barras laterales y pantallas de inicio. |
+| **Dark Slate (Sombra / Contraste)** | `#1E293B` | `(30, 41, 59)` | Bordes, textos de alto contraste y modos oscuros. |
 
 ---
 
-## 5. 📝 Tareas Pendientes Registradas
-* [ ] Elección final de la paleta de colores oficial entre las 4 propuestas.
-* [ ] Implementación de rebranding en el código del sistema:
-  * Consola de Administración (`apps/admin`).
-  * Consola de Caja (`apps/cashier`).
-  * Aplicación Móvil Android APK (`apps/mobile` → `com.valex.app`).
-  * Membretes de comprobantes contables y facturación.
+## 4. 📁 Ubicación de Activos en el Proyecto
+
+* **Master Assets & Branding:** `docs/branding/assets/`
+  * `valex_logo_plomo.png` / `valex_logo_transparent.png`
+  * `valex_isotype_plomo.png` / `valex_isotype_transparent.png`
+  * `valex_isotype.svg`
+  * `valex_icon_square_1024.png`
+* **Consola de Administración (`apps/admin/public/`):**
+  * `logo.png`, `logo_plomo.png`, `isotype.png`, `isotype_plomo.png`, `isotype.svg`, `favicon.png`, `favicon.ico`, `apple-touch-icon.png`
+  * Descarga directa: `/downloads/VALEX.apk`
+* **Consola de Caja (`apps/cashier/public/`):**
+  * `logo.png`, `logo_plomo.png`, `isotype.png`, `isotype_plomo.png`, `isotype.svg`, `favicon.png`, `favicon.ico`, `apple-touch-icon.png`
+* **Aplicación Móvil (`apps/mobile/assets/images/`):**
+  * `icon.png` (1024x1024), `splash-icon.png` (512x512), `android-icon-foreground.png`, `android-icon-background.png`, `android-icon-monochrome.png`, `favicon.png`
+  * Binario compilado: `aplicaciones/mobile/VALEX-v1.0.0.apk`
+
+---
+
+## 5. 🚀 Estado de Implementación
+
+- [x] **Naming Oficial:** VALEX (*Valor + Exchange*).
+- [x] **Isotipo Oficial:** *Dynamic Exchange X* (Flechas en X con cortes angulares).
+- [x] **Paleta Oficial:** Cyan `#00E5FF`, Blanco `#FFFFFF`, Slate Plomo `#475569`.
+- [x] **Rebranding Web:** Consolas de Admin y Caja actualizadas con logotipos, favicons y estilos corporativos.
+- [x] **Rebranding Móvil:** App móvil Android (`com.valex.app`) recompilada con nuevo ícono, splash screen y cabeceras.

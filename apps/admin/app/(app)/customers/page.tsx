@@ -452,7 +452,7 @@ export default function CustomersPage() {
                 </div>
                 <a
                   href={`https://wa.me/${selectedCustomer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
-                    `Hola ${selectedCustomer.fullName}, tu cuenta en Divisas ha sido verificada con éxito. Ya puedes realizar envíos Ecuador ↔ Perú desde tu app móvil.`,
+                    `Hola ${selectedCustomer.fullName}, tu cuenta en VALEX ha sido verificada con éxito. Ya puedes realizar transferencias y cambios de divisas desde tu app móvil.`
                   )}`}
                   target="_blank"
                   rel="noreferrer"

@@ -28,31 +28,52 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-slate-100 px-4">
-      <Card className="w-full max-w-sm" title="Consola de Administración — Divisas">
-        <form onSubmit={onSubmit} className="space-y-4">
-          {error && <Alert>{error}</Alert>}
-          <Input
-            label="Correo electrónico"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Input
-            label="Contraseña"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <Button type="submit" className="w-full" loading={loading}>
-            Iniciar sesión
-          </Button>
-        </form>
-      </Card>
+    <div className="flex min-h-full items-center justify-center bg-[#475569] px-4 py-12">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center space-y-2">
+          <div className="flex justify-center">
+            <img
+              src="/logo_plomo.png"
+              alt="VALEX"
+              className="h-20 object-contain drop-shadow-md"
+            />
+          </div>
+          <p className="text-xs font-semibold tracking-widest text-[#00E5FF] uppercase">
+            Consola de Administración & Finanzas
+          </p>
+        </div>
+
+        <Card className="w-full bg-white/95 backdrop-blur shadow-2xl border-slate-300">
+          <form onSubmit={onSubmit} className="space-y-4 pt-2">
+            {error && <Alert>{error}</Alert>}
+            <Input
+              label="Correo electrónico"
+              type="email"
+              autoComplete="email"
+              placeholder="admin@divisas.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Input
+              label="Contraseña"
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Button
+              type="submit"
+              className="w-full bg-[#475569] hover:bg-slate-700 text-white font-bold py-2.5 transition-all shadow-md"
+              loading={loading}
+            >
+              Acceder a VALEX Admin
+            </Button>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

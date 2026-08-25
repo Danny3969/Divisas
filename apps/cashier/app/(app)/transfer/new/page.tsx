@@ -630,7 +630,7 @@ export default function NewTransferPage() {
                   className="flex-1"
                   onClick={() =>
                     alert(
-                      `🖨️ IMPRIMIENDO TICKET DE REMESA DE VENTANILLA:\n----------------------------------------\nDIVISAS REMESAS INT.\nCÓDIGO RETIRO: ${createdTransfer.withdrawalCode}\nREF: ${createdTransfer.reference}\nREMITENTE: ${createdTransfer.sender.fullName}\nBENEFICIARIO: ${createdTransfer.beneficiary.fullName}\nMONTO NETO A RETIRAR: ${createdTransfer.receiveAmount} ${createdTransfer.receiveCurrency}\n----------------------------------------`
+                      `🖨️ IMPRIMIENDO TICKET DE REMESA DE VENTANILLA:\n----------------------------------------\nVALEX — CAMBIO & GIROS INT.\nCÓDIGO RETIRO: ${createdTransfer.withdrawalCode}\nREF: ${createdTransfer.reference}\nREMITENTE: ${createdTransfer.sender.fullName}\nBENEFICIARIO: ${createdTransfer.beneficiary.fullName}\nMONTO NETO A RETIRAR: ${createdTransfer.receiveAmount} ${createdTransfer.receiveCurrency}\n----------------------------------------`
                     )
                   }
                 >

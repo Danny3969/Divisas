@@ -25,10 +25,23 @@ function Sidebar() {
   const router = useRouter();
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-4 py-4">
-        <div className="text-lg font-bold text-blue-700">Divisas</div>
-        <div className="text-xs text-slate-500">Administración</div>
+    <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
+      <div className="border-b border-slate-700 px-4 py-4 bg-[#475569] text-white">
+        <div className="flex items-center gap-3">
+          <img
+            src="/isotype_plomo.png"
+            alt="VALEX"
+            className="w-10 h-10 rounded-xl object-contain shadow-sm border border-slate-500/50 p-0.5"
+          />
+          <div>
+            <div className="text-xl font-black tracking-wider text-white flex items-center gap-1">
+              VALEX
+            </div>
+            <div className="text-[10px] uppercase font-bold tracking-widest text-[#00E5FF]">
+              Administración
+            </div>
+          </div>
+        </div>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {NAV.map((item) => {
@@ -39,8 +52,8 @@ function Sidebar() {
               href={item.href}
               className={`block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-slate-100 text-slate-900 font-bold border-l-4 border-[#00E5FF]"
+                  : "text-slate-600 hover:bg-slate-50"
               }`}
             >
               {item.label}
@@ -50,15 +63,15 @@ function Sidebar() {
       </nav>
       <div className="px-3 pb-2">
         <a
-          href="/downloads/Divisas.apk"
-          download="Divisas.apk"
-          className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold border border-emerald-200 transition-colors"
+          href="/downloads/VALEX.apk"
+          download="VALEX.apk"
+          className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-[#475569] text-white hover:bg-slate-700 text-xs font-bold border border-slate-600 transition-all shadow-sm"
         >
-          <span>📱</span>
-          <span>Descargar APK Android</span>
+          <span className="text-base">📱</span>
+          <span className="text-[#00E5FF]">Descargar APK VALEX</span>
         </a>
       </div>
-      <div className="border-t border-slate-200 p-4">
+      <div className="border-t border-slate-200 p-4 bg-slate-50">
         <div className="text-sm font-semibold text-slate-800">
           {user?.fullName}
         </div>

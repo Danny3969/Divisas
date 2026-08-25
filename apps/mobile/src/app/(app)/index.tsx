@@ -41,12 +41,19 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.slate900 }}>
-        Hola {firstName}
-      </Text>
-      <Text style={{ color: COLORS.slate600, marginBottom: 16 }}>
-        Envía dinero Ecuador ↔ Perú
-      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <View>
+          <Text style={{ fontSize: 26, fontWeight: "900", color: COLORS.slate900 }}>
+            Hola {firstName} 👋
+          </Text>
+          <Text style={{ color: "#475569", fontSize: 13, fontWeight: "600" }}>
+            VALEX · Envíos Ecuador ↔ Perú
+          </Text>
+        </View>
+        <View style={{ backgroundColor: "#475569", padding: 4, borderRadius: 10 }}>
+          <Text style={{ color: "#00E5FF", fontWeight: "900", fontSize: 14, letterSpacing: 1 }}>VALEX</Text>
+        </View>
+      </View>
 
       {customer && !kycOk && (
         <Card style={{ backgroundColor: COLORS.warning + "14", borderColor: COLORS.warning }}>

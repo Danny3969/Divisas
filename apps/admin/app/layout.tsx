@@ -9,8 +9,12 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Divisas — Administración",
-  description: "Consola de administración de la plataforma de remesas EC-PE",
+  title: "VALEX — Administración & Finanzas",
+  description: "Plataforma de cambio de divisas y giros internacionales VALEX",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

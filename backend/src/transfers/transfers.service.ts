@@ -355,7 +355,7 @@ export class TransfersService {
       throw new BadRequestException('La operación no tiene código de retiro generado');
     }
 
-    const text = `*DIVISAS REMESAS INTERNACIONALES*\n\nHola *${transfer.beneficiary.fullName}*,\n\n*${transfer.sender.fullName}* te ha enviado un giro por *${transfer.receiveAmount} ${transfer.receiveCurrency}*.\n\nPuedes retirarlo en cualquier oficina de Divisas en Perú presentando tu DNI y el siguiente código:\n\n🔑 *Código de Retiro:* ${transfer.withdrawalCode}\n\nVigencia: 30 días. ¡Gracias por confiar en Divisas!`;
+    const text = `*VALEX — GIROS & DIVISAS*\n\nHola *${transfer.beneficiary.fullName}*,\n\n*${transfer.sender.fullName}* te ha enviado un giro por *${transfer.receiveAmount} ${transfer.receiveCurrency}*.\n\nPuedes retirarlo en cualquier oficina de VALEX presentando tu documento y el siguiente código:\n\n🔑 *Código de Retiro:* ${transfer.withdrawalCode}\n\nVigencia: 30 días. ¡Gracias por confiar en VALEX!`;
     const encoded = encodeURIComponent(text);
     const phoneClean = transfer.beneficiary.phone ? transfer.beneficiary.phone.replace(/\D/g, '') : '';
     const link = phoneClean ? `https://wa.me/${phoneClean}?text=${encoded}` : `https://wa.me/?text=${encoded}`;

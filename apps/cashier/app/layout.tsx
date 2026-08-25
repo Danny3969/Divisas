@@ -9,8 +9,12 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Divisas — Caja",
-  description: "Consola de cajero de la plataforma de remesas EC-PE",
+  title: "VALEX — Consola de Caja",
+  description: "Consola de operaciones de caja y ventanilla VALEX",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

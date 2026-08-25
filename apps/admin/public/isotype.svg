@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <rect width="200" height="200" rx="40" fill="#475569"/>
+  <g transform="translate(100, 100)">
+    <!-- Cyan Upper-Left to Lower-Right Arrow Beam -->
+    <path d="M-55,-40 L-25,-40 L15,15 L-15,15 Z" fill="#00E5FF"/>
+    <path d="M-60,-55 L-20,-35 L-50,-15 Z" fill="#00E5FF"/>
+    <path d="M-15,15 L-45,15 L-55,55 L-25,55 Z" fill="#00E5FF"/>
+    <path d="M-65,45 L-45,65 L-25,45 Z" fill="#00E5FF"/>
+    <!-- White Upper-Right to Lower-Left Arrow Beam -->
+    <path d="M25,-40 L55,-40 L-15,15 L15,15 Z" fill="#FFFFFF"/>
+    <path d="M60,-55 L20,-35 L50,-15 Z" fill="#FFFFFF"/>
+    <path d="M15,15 L45,15 L55,55 L25,55 Z" fill="#FFFFFF"/>
+    <path d="M65,45 L45,65 L25,45 Z" fill="#FFFFFF"/>
+  </g>
+</svg>

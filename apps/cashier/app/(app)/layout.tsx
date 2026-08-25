@@ -27,18 +27,27 @@ function Sidebar() {
         ? "🇪🇨 Caja Ecuador"
         : "Consola de caja";
 
-  const headerColor =
+  const headerBg =
     countryCode === "PE"
-      ? "bg-red-700"
+      ? "bg-slate-800 border-b-4 border-red-600"
       : countryCode === "EC"
-        ? "bg-yellow-500"
-        : "bg-blue-700";
+        ? "bg-slate-800 border-b-4 border-yellow-500"
+        : "bg-[#475569] border-b-4 border-[#00E5FF]";
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className={`px-4 py-4 ${headerColor}`}>
-        <div className="text-lg font-bold text-white">Divisas</div>
-        <div className="text-sm font-semibold text-white/90">{cajaLabel}</div>
+    <aside className="flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
+      <div className={`px-4 py-4 ${headerBg} text-white`}>
+        <div className="flex items-center gap-3">
+          <img
+            src="/isotype_plomo.png"
+            alt="VALEX"
+            className="w-10 h-10 rounded-xl object-contain shadow-sm border border-slate-500/50 p-0.5"
+          />
+          <div>
+            <div className="text-xl font-black tracking-wider text-white">VALEX</div>
+            <div className="text-xs font-semibold text-[#00E5FF]">{cajaLabel}</div>
+          </div>
+        </div>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {NAV.map((item) => {
