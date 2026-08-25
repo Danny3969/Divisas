@@ -49,8 +49,13 @@ npx pm2 logs                         # Ver logs en tiempo real
 
 ## 🌍 URLs Públicas Activas (Cloudflare Tunnels)
 - **Portal Web Unificado (Admin & Caja):** https://bet-kansas-organizations-followed.trycloudflare.com
+- **VALEX Realizados:** https://bet-kansas-organizations-followed.trycloudflare.com/transfers
+- **VALEX Recibidos (Caja de Retiro):** https://bet-kansas-organizations-followed.trycloudflare.com/payout
+- **Nuevo VALEX:** https://bet-kansas-organizations-followed.trycloudflare.com/transfer/new
+- **Panel General (Dashboard):** https://bet-kansas-organizations-followed.trycloudflare.com/dashboard
 - **Backend API:** https://volume-cartridge-previews-cigarettes.trycloudflare.com/api
 - **Descarga Directa APK Móvil (Android):** https://bet-kansas-organizations-followed.trycloudflare.com/downloads/VALEX.apk
+- **Dominio Comprado en Espera de DNS:** `valex-app.com`
 
 ## 📱 Aplicación Móvil Android (APK)
 - **Ruta Local del APK:** `/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/aplicaciones/mobile/VALEX-v1.0.0.apk`
@@ -63,9 +68,53 @@ npx pm2 logs                         # Ver logs en tiempo real
 > `grep "trycloudflare.com" ~/.pm2/logs/divisas-tunnel-admin-error.log | tail -n 1`
 
 
-## 🚀 Funcionalidades Implementadas
+## 🚀 Funcionalidades y Módulos Operativos
 
-### Módulo de Comisiones por Tramos en Soles (`/fees`)
+### 1. 📤 VALEX Realizados (`/transfers`)
+- [x] **Separación de Flujos:** Visualización dedicada para giros emitidos desde las agencias.
+- [x] **Pestañas por Caja y País:** Filtrado por `Todos`, `Ecuador 🇪🇨 → Perú 🇵🇪` (Caja Ecuador) y `Perú 🇵🇪 → Ecuador 🇪🇨` (Caja Perú).
+- [x] **Seguridad de Código:** Enmascarado de código de retiro (`VLX-XXXX-••••`) en tabla para evitar cobros no autorizados por personal de emisión.
+- [x] **Apertura de Transacción:** Soporte para apertura tanto por clic en fila, doble clic y botón de acción.
+
+### 2. 📥 VALEX Recibidos & Caja de Retiro (`/payout`)
+- [x] **Separación de Pestañas de Estado:**
+  - `⏳ Pendientes de Entrega`: Operaciones activas listas para validar y pagar.
+  - `✅ Cancelados / Entregados (Historial)`: Historial de transacciones ya liquidadas.
+- [x] **Validación Estricta de Código Único de VALEX:** Campo interactivo que coteja el código dictado/presentado por el beneficiario.
+- [x] **Soporte de Todas las Formas de Retiro:**
+  - **💵 Efectivo en Ventanilla:** Descuenta saldo en físico de la caja de la agencia de entrega (`CREDIT 1020`) y cierra pasivo (`DEBIT 2030`).
+  - **📱 Abono Yape (Billetera Móvil):** Liquida el pago, descuenta el saldo bancario/Yape de la empresa (`CREDIT 1010-PE`) y cierra pasivo (`DEBIT 2030`).
+  - **🏦 Transferencia Bancaria:** Liquida el pago, descuenta el saldo bancario (`CREDIT 1010`) y cierra pasivo (`DEBIT 2030`).
+- [x] **Invalidación Inmediata de Código:** Al pulsar "Confirmar Pago (Marcar Cancelado)", el código pasa a `withdrawalUsed: true` y el estado a `COMPLETED`.
+- [x] **Bloqueo de Re-pago:** Cualquier intento de pagar un VALEX ya cancelado es bloqueado con error HTTP 400.
+
+### 3. 💸 Nueva Emisión de VALEX (`/transfer/new`)
+- [x] **Monto Inicial en Cero:** La celda inicia en `0.00` para que el digitador escriba la cantidad limpia.
+- [x] **Desvinculación Remitente-Destinatario:** El remitente ya no está atado a un único beneficiario histórico; se puede buscar en el directorio o registrar uno nuevo.
+- [x] **Lógica de Comisiones Automáticas:**
+  - **En Caja de Depósito:** Suma la comisión al valor a pagar por el cliente.
+  - **En Caja de Retiro:** Descuenta la comisión del valor neto a recibir.
+- [x] **Formas de Pago en Emisión:**
+  - **Efectivo en Ventanilla:** Registra la recepción de efectivo y series de billetes altos.
+  - **Transferencia Bancaria:** Selector de banco, número de operación y carga de foto/comprobante.
+- [x] **Verificación Obligatoria de Transferencia Bancaria en Cuenta:**
+  - Tarjeta de confirmación con checkbox y botón interactivo.
+  - Bloqueo obligatorio: No se permite cotizar ni generar el Código Único de VALEX si el cajero no marca que validó los fondos en la banca móvil de VALEX.
+- [x] **Aumento Automático en Tesorería:** Al pagar por transferencia bancaria, el saldo en `1010-EC Banco Pichincha` o `1010-PE BCP` aumenta automáticamente.
+
+### 4. 📊 Panel General y Control Operativo (`/dashboard`)
+- [x] **Desglose de Recaudación:**
+  - **💵 Enviado en Efectivo:** Monto total en USD y PEN recaudado en ventanilla física y número de giros.
+  - **🏦 Enviado por Transferencia:** Monto total en USD y PEN depositado en cuentas bancarias y número de giros.
+- [x] **Desglose de Comisiones VALEX:** Total acumulado en USD y PEN, más el margen generado hoy.
+- [x] **Arqueo de Fondos en Tiempo Real:**
+  - **🏧 Bóvedas Físicas:** Saldo disponible en Caja Ecuador (`USD`) y Caja Perú (`PEN`).
+  - **🏦 Cuentas Bancarias:** Saldo disponible en Banco Pichincha, Banco Guayaquil y BCP.
+- [x] **Desglose por Forma de Retiro / Entrega:** Volumen de pagos en Efectivo, Yape y Cuenta Bancaria.
+- [x] **Volumen Bilateral por Corredor:** `Ecuador 🇪🇨 → Perú 🇵🇪` y `Perú 🇵🇪 → Ecuador 🇪🇨`.
+- [x] **Trazabilidad y Auditoría en Vivo:** Registro de eventos por usuario, fecha y entidad.
+
+### 5. Módulo de Comisiones por Tramos en Soles (`/fees`)
 - [x] **Tabla Dinámica y Escalonada por Tramos en Soles (PEN):**
   - **1 a 500 soles:** $1.00 USD
   - **501 a 1,000 soles:** $2.00 USD
@@ -75,46 +124,16 @@ npx pm2 logs                         # Ver logs en tiempo real
   - **Más de 10,000 soles:** $6.00 USD (configurable)
 - [x] **Panel Web CRUD Completo:** Creación, edición, activación/desactivación y eliminación de tramos en vivo.
 - [x] **Simulador Interactivo:** Cálculo en tiempo real de equivalencia en soles, tramo aplicado, comisión y neto a entregar.
-- [x] **Cobro Simétrico en Ambas Puntas:** Ambas cajas (Ecuador y Perú) operan bajo la misma regla de comisiones en ventanilla y cotizaciones.
 
-### Módulo de Contabilidad Empresarial y Tesorería (`/ledger`)
-- [x] **Configuración de Saldos Reales Iniciales / Purga Limpia:**
-  - Apertura limpia de contabilidad estableciendo los saldos reales en Banco Pichincha (USD), BCP (PEN) y Cajas de efectivo con asiento automático a Capital Social.
-- [x] **Gestión Bancaria y Conciliación Inteligente:**
-  - Flujo de depósitos y retiros directos en Banco Pichincha (Ecuador) y BCP (Perú).
-  - Importador y conciliador de extractos bancarios en CSV/Excel con detección de movimientos, cotejo automático y creación de gastos/ingresos en 1 clic.
-- [x] **Directorio de Proveedores:**
-  - Catálogo de proveedores con RUC/DNI, razón social, categoría habitual y cuentas bancarias.
-  - Autocompletado directo al registrar facturas y gastos.
-- [x] **Personal y Nómina de Sueldos:**
-  - Registro de trabajadores con cargos, salarios base pactados (USD o PEN), país y cuenta bancaria de depósito.
-  - Modal de liquidación y pago de nómina con 1 clic (descuenta de la cuenta/caja y registra asiento en cuenta `5030 Sueldos y Nómina`).
-- [x] **Facturas y Gastos con Desglose de Impuestos:**
-  - Desglose y cálculo automático: Subtotal + IVA 15% (Ecuador) o IGV 18% (Perú) o Exento = Total.
-  - Soporte de comprobante adjunto (Fotos de recibos o archivos PDF con visor integrado).
-- [x] **Traspasos Internos y Capital:**
-  - Fondeo de caja desde el banco y depósitos de recaudación a banco.
-  - Aportes y retiros de utilidades de socios.
-- [x] **Libro Contable Double-Entry y Exportación:**
-  - Asientos de partida doble matemática inmutables.
-  - Exportación del Libro Diario a Excel / CSV en 1 clic.
+### 6. Módulo de Contabilidad Empresarial y Tesorería (`/ledger`)
+- [x] **Configuración de Saldos Reales Iniciales / Purga Limpia:** Apertura limpia con saldos reales en bancos y cajas.
+- [x] **Gestión Bancaria y Conciliación Inteligente:** Conciliador de extractos en CSV/Excel con detección y cotejo automático.
+- [x] **Directorio de Proveedores y Gastos:** Registro de facturas con desglose de impuestos (IVA 15% / IGV 18%) y visor de comprobantes adjuntos.
+- [x] **Personal y Nómina de Sueldos:** Liquidación de sueldos con 1 clic afectando cuentas de tesorería y gastos de nómina (`5030`).
+- [x] **Traspasos Internos y Capital:** Fondeo de cajas, depósitos a bancos y aportes/retiros de socios.
+- [x] **Libro Diario Double-Entry:** Exportación a Excel / CSV en 1 clic.
 
-### Consola de Caja (`apps/cashier`)
-- [x] Proxy de API integrado en `next.config.ts`.
-- [x] Nueva Transferencia con 3 métodos: **Efectivo**, **Yape**, **Cuenta Bancaria**.
-- [x] Identificación visual por país (🇵🇪 Rojo / 🇪🇨 Amarillo) con cabecera y logo VALEX.
-- [x] Prefijos de teléfono automáticos (+51 / +593).
-
-### Consola de Administración (`apps/admin`)
-- [x] Clientes: CRUD completo.
-- [x] Sección **Beneficiarios**: lista, búsqueda, editar, eliminar.
-- [x] Sección **Usuarios y Accesos**:
-  - Crear nuevo usuario con nombre, correo, teléfono, rol y asignación de agencia.
-  - Editar datos de usuario, roles, asignación de oficina y estado activo/inactivo.
-  - Eliminar usuarios con confirmación y protección de cuenta superadmin.
-  - Restablecer contraseña individual.
-- [x] Sección **Contabilidad** con panel interactivo de 7 pestañas.
-- [x] Botón de descarga de APK **VALEX.apk** integrado en la barra lateral.
+---
 
 ## 🏛️ Identidad de Marca Oficial — VALEX
 - **Nombre Oficial:** **VALEX** *(Valor + Exchange)*
@@ -126,15 +145,3 @@ npx pm2 logs                         # Ver logs en tiempo real
   - **Blanco Puro:** `#FFFFFF`
   - **Slate Plomo:** `#475569`
 - **Manual de Marca & Assets:** [`docs/branding/MANUAL_DE_MARCA_VALEX.md`](docs/branding/MANUAL_DE_MARCA_VALEX.md)
-  - Carpeta de activos visuales, iconos y mockups en alta resolución: `docs/branding/assets/`
-- **Implementación Completada:**
-  - [x] Consola de Administración (`apps/admin`) con branding, favicon, logo e isotipo en fondo plomo.
-  - [x] Consola de Caja (`apps/cashier`) con branding, favicon, logo e isotipo en fondo plomo.
-  - [x] App Móvil Android (`apps/mobile`, `com.valex.app`) con nuevo ícono, splash screen y binario `VALEX-v1.0.0.apk`.
-  - [x] Plantillas de tickets y notificaciones WhatsApp actualizadas a VALEX.
-
-## 📝 Notas Técnicas
-- **Normalización de teléfonos:** `normalizePhone()` en `lib/format.ts` (cashier y admin)
-- **Presentación de teléfonos:** `fmtPhone()` en `lib/format.ts`
-- **Proxy transparente:** Peticiones `/api/*` reenviadas internamente al backend.
-
