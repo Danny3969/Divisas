@@ -36,26 +36,35 @@ export default function PayoutPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Filter tabs
+  const [statusTab, setStatusTab] = useState<"PENDING" | "COMPLETED">("PENDING");
+  const [directionFilter, setDirectionFilter] = useState<string>("ALL");
+
   // List of pending transfers
-  const [pendingTransfers, setPendingTransfers] = useState<Transfer[]>([]);
-  const [loadingPending, setLoadingPending] = useState(true);
+  const [transfersList, setTransfersList] = useState<Transfer[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
 
   // Detail modal
   const [viewingTransfer, setViewingTransfer] = useState<Transfer | null>(null);
 
-  const loadPending = async () => {
+  const loadTransfers = async () => {
+    setLoadingList(true);
     try {
-      const res = await get<{ items: Transfer[] }>("/transfers?status=SETTLEMENT_PENDING&limit=50");
-      if (res?.items) setPendingTransfers(res.items);
+      const statusParam = statusTab === "PENDING" ? "SETTLEMENT_PENDING" : "COMPLETED";
+      const res = await get<{ items: Transfer[] }>(`/transfers?status=${statusParam}&limit=50`);
+      if (res?.items) setTransfersList(res.items);
     } catch {
       // ignore
     } finally {
-      setLoadingPending(false);
+      setLoadingList(false);
     }
   };
 
   useEffect(() => {
-    loadPending();
+    loadTransfers();
+  }, [statusTab]);
+
+  useEffect(() => {
     get<CashAccount[]>("/cash/accounts")
       .then((accs) => {
         setCashAccounts(accs);
@@ -141,7 +150,7 @@ export default function PayoutPage() {
         `✅ ¡Transacción CANCELADA / PAGADA con éxito! Se han entregado ${fmtMoney(t.receiveAmount, t.receiveCurrency)} a ${t.beneficiary.fullName}.`,
       );
       setTransfer(t);
-      loadPending();
+      loadTransfers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al procesar la entrega");
     } finally {
@@ -152,21 +161,34 @@ export default function PayoutPage() {
   const validForPayout =
     transfer && transfer.status === "SETTLEMENT_PENDING" && !transfer.withdrawalUsed;
 
+  const filteredItems = transfersList.filter((t) => {
+    if (directionFilter === "EC_TO_PE") return t.corridor?.direction === "EC_TO_PE";
+    if (directionFilter === "PE_TO_EC") return t.corridor?.direction === "PE_TO_EC";
+    return true;
+  });
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between bg-[#475569] text-white p-4 rounded-2xl shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#475569] text-white p-4 rounded-2xl shadow-sm">
         <div>
           <h1 className="text-xl font-black text-white flex items-center gap-2">
-            <span>🏧</span> Caja de Retiro y Entrega de Fondos
+            <span>📥</span> VALEX Recibidos — Caja de Retiro & Entrega
           </h1>
           <p className="text-xs text-[#00E5FF] font-semibold">
-            VALEX · Validar Código Único de VALEX y Entrega en Efectivo, Yape o Cuenta Bancaria
+            Giros entrantes para entrega en destino (Perú 🇵🇪 o Ecuador 🇪🇨) con validación de Código Único de VALEX
           </p>
         </div>
-        <div className="text-right">
-          <Badge className="bg-emerald-500/20 text-[#00E5FF] border border-[#00E5FF]/30 text-xs font-bold">
-            {pendingTransfers.length} Giros por Entregar
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            className="text-xs font-bold text-slate-900 bg-cyan-300 hover:bg-cyan-200"
+            onClick={() => router.push("/transfers")}
+          >
+            📤 Ver VALEX Realizados ➔
+          </Button>
+          <Badge className="bg-emerald-500/20 text-[#00E5FF] border border-[#00E5FF]/30 text-xs font-bold px-3 py-1">
+            {transfersList.filter((t) => t.status === "SETTLEMENT_PENDING").length} Por Entregar
           </Badge>
         </div>
       </div>
@@ -226,7 +248,7 @@ export default function PayoutPage() {
                 {fmtMoney(transfer.receiveAmount, transfer.receiveCurrency)}
               </div>
               <div className="text-xs text-emerald-700 font-medium">
-                (Comisión de ventanilla ya descontada · Remitente: {transfer.sender.fullName})
+                (Comisión ya descontada · Remitente: {transfer.sender.fullName})
               </div>
             </div>
 
@@ -350,9 +372,64 @@ export default function PayoutPage() {
         </Alert>
       )}
 
-      {/* PENDING TRANSFERS TABLE (MASKED CODE) */}
+      {/* TABS FOR STATUS & DIRECTION */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
+        {/* Status Tabs */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setStatusTab("PENDING")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              statusTab === "PENDING"
+                ? "bg-amber-600 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            ⏳ Pendientes de Entrega
+          </button>
+          <button
+            onClick={() => setStatusTab("COMPLETED")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              statusTab === "COMPLETED"
+                ? "bg-emerald-700 text-white shadow-xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            ✅ Cancelados / Entregados (Historial)
+          </button>
+        </div>
+
+        {/* Direction Filter */}
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setDirectionFilter("ALL")}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+              directionFilter === "ALL" ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => setDirectionFilter("EC_TO_PE")}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+              directionFilter === "EC_TO_PE" ? "bg-blue-700 text-white" : "bg-blue-50 text-blue-800"
+            }`}
+          >
+            🇵🇪 Caja Perú (Entrantes)
+          </button>
+          <button
+            onClick={() => setDirectionFilter("PE_TO_EC")}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+              directionFilter === "PE_TO_EC" ? "bg-amber-700 text-white" : "bg-amber-50 text-amber-800"
+            }`}
+          >
+            🇪🇨 Caja Ecuador (Entrantes)
+          </button>
+        </div>
+      </div>
+
+      {/* TRANSFERS LIST TABLE (MASKED CODE) */}
       <Card
-        title="📋 Giros Pendientes de Retiro (Registrados en Sistema)"
+        title={statusTab === "PENDING" ? "📋 VALEX Recibidos por Entregar" : "📋 Historial de VALEX Entregados y Cancelados"}
         action={
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500 font-medium">
@@ -361,8 +438,8 @@ export default function PayoutPage() {
             <Button
               variant="secondary"
               className="text-xs font-bold py-1 px-2.5"
-              onClick={loadPending}
-              disabled={loadingPending}
+              onClick={loadTransfers}
+              disabled={loadingList}
             >
               🔄 Actualizar
             </Button>
@@ -370,11 +447,11 @@ export default function PayoutPage() {
         }
       >
         <div className="space-y-3">
-          {loadingPending ? (
+          {loadingList ? (
             <Spinner />
-          ) : pendingTransfers.length === 0 ? (
+          ) : filteredItems.length === 0 ? (
             <div className="text-center py-8 text-xs text-slate-400">
-              No hay giros pendientes de retiro en este momento.
+              No hay giros en esta lista en este momento.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -383,6 +460,7 @@ export default function PayoutPage() {
                   <tr className="border-b border-slate-200 text-left text-slate-500 font-bold bg-slate-50">
                     <th className="py-2.5 px-2">Referencia</th>
                     <th className="py-2.5 px-2">Fecha</th>
+                    <th className="py-2.5 px-2">Caja Destino</th>
                     <th className="py-2.5 px-2">Remitente</th>
                     <th className="py-2.5 px-2">Beneficiario</th>
                     <th className="py-2.5 px-2">Monto a Entregar</th>
@@ -392,7 +470,7 @@ export default function PayoutPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingTransfers.map((t) => (
+                  {filteredItems.map((t) => (
                     <tr
                       key={t.id}
                       onClick={() => selectTransferFromList(t)}
@@ -405,6 +483,9 @@ export default function PayoutPage() {
                         {t.reference}
                       </td>
                       <td className="py-2.5 px-2 text-slate-500">{fmtDate(t.createdAt)}</td>
+                      <td className="py-2.5 px-2 text-xs font-bold text-slate-700">
+                        {t.corridor?.toCountry.code === "PE" ? "🇵🇪 Perú" : "🇪🇨 Ecuador"}
+                      </td>
                       <td className="py-2.5 px-2 text-slate-700">{t.sender.fullName}</td>
                       <td className="py-2.5 px-2 font-bold text-slate-900">
                         {t.beneficiary.fullName}
@@ -436,16 +517,18 @@ export default function PayoutPage() {
                         >
                           👁️ Ficha
                         </Button>
-                        <Button
-                          variant="primary"
-                          className="text-[11px] font-bold py-1 px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            selectTransferFromList(t);
-                          }}
-                        >
-                          ⚡ Atender
-                        </Button>
+                        {t.status === "SETTLEMENT_PENDING" && (
+                          <Button
+                            variant="primary"
+                            className="text-[11px] font-bold py-1 px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectTransferFromList(t);
+                            }}
+                          >
+                            ⚡ Pagar
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -505,17 +588,19 @@ export default function PayoutPage() {
               <Button variant="secondary" onClick={() => setViewingTransfer(null)}>
                 Cerrar
               </Button>
-              <Button
-                variant="primary"
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
-                onClick={() => {
-                  const t = viewingTransfer;
-                  setViewingTransfer(null);
-                  selectTransferFromList(t);
-                }}
-              >
-                Atender y Validar Código ➔
-              </Button>
+              {viewingTransfer.status === "SETTLEMENT_PENDING" && (
+                <Button
+                  variant="primary"
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
+                  onClick={() => {
+                    const t = viewingTransfer;
+                    setViewingTransfer(null);
+                    selectTransferFromList(t);
+                  }}
+                >
+                  Atender y Validar Código ➔
+                </Button>
+              )}
             </div>
           </div>
         </Modal>

@@ -9,22 +9,26 @@ import { FxTicker } from "@/components/fx-ticker";
 
 const ADMIN_NAV = [
   { href: "/dashboard", label: "Panel General", icon: "📊" },
-  { href: "/transfers", label: "Operaciones", icon: "📋" },
+  { href: "/transfer/new", label: "Emitir Nuevo VALEX", icon: "💸" },
+  { href: "/transfers", label: "VALEX Realizados", icon: "📤" },
+  { href: "/payout", label: "VALEX Recibidos", icon: "📥" },
   { href: "/customers", label: "Clientes", icon: "👥" },
   { href: "/beneficiaries", label: "Beneficiarios", icon: "👤" },
+  { href: "/cash", label: "Bóvedas & Cajas", icon: "🏧" },
+  { href: "/sessions", label: "Sesiones de Caja", icon: "🕒" },
   { href: "/users", label: "Usuarios & Roles", icon: "🛡️" },
   { href: "/fx", label: "Tasas FX & Spreads", icon: "📈" },
   { href: "/fees", label: "Comisiones", icon: "🏷️" },
   { href: "/treasury", label: "Tesorería", icon: "🏦" },
   { href: "/ledger", label: "Contabilidad", icon: "📖" },
-  { href: "/cash", label: "Bóvedas & Cajas", icon: "🏧" },
   { href: "/audit", label: "Auditoría", icon: "🔍" },
 ];
 
 const CASHIER_NAV = [
   { href: "/dashboard", label: "Panel de Caja", icon: "🏠" },
-  { href: "/transfer/new", label: "+ Nueva Transferencia", icon: "💸" },
-  { href: "/payout", label: "Retiro / Payout", icon: "💵" },
+  { href: "/transfer/new", label: "+ Emitir Nuevo VALEX", icon: "💸" },
+  { href: "/transfers", label: "VALEX Realizados", icon: "📤" },
+  { href: "/payout", label: "VALEX Recibidos", icon: "📥" },
   { href: "/sessions", label: "Caja & Sesiones", icon: "🏧" },
   { href: "/beneficiaries", label: "Beneficiarios", icon: "👥" },
   { href: "/customers", label: "Directorio Clientes", icon: "📇" },

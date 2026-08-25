@@ -12,6 +12,7 @@ import {
   LedgerEntrySide,
   PaymentMethod,
   PaymentStatus,
+  Role,
   TransferStatus,
 } from '@prisma/client';
 
@@ -125,7 +126,7 @@ export class PaymentsService {
   }
 
   /**
-   * Pago por transferencia bancaria: registra el pago pendiente (PENDING).
+   * Pago por transferencia bancaria: registra el pago y si es en ventanilla lo procesa para liquidación.
    */
   async registerBankPayment(dto: RegisterBankPaymentDto, actor: AuthUser) {
     const transfer = await this.prisma.transfer.findUnique({ where: { id: dto.transferId } });
@@ -136,21 +137,32 @@ export class PaymentsService {
     if (transfer.status !== TransferStatus.AWAITING_PAYMENT && transfer.status !== TransferStatus.CONFIRMED) {
       throw new BadRequestException(`Estado ${transfer.status} no permite registrar pago bancario`);
     }
+
+    const amount = dto.amount !== undefined && dto.amount !== null && !isNaN(Number(dto.amount))
+      ? Number(dto.amount)
+      : Number(transfer.sendAmount);
+    const currency = dto.currency || transfer.sendCurrency;
+    const bankName = dto.bankName || 'Banco Origen';
+
     if (transfer.status === TransferStatus.CONFIRMED) {
       await this.transfers.transition(transfer.id, TransferStatus.AWAITING_PAYMENT, actor, 'Esperando pago bancario');
     }
+
+    const isStaff = actor.role === Role.CASHIER || actor.role === Role.SUPERVISOR || actor.role === Role.ADMIN || actor.role === Role.TREASURY;
 
     const payment = await this.prisma.payment.create({
       data: {
         transferId: transfer.id,
         method: PaymentMethod.BANK_TRANSFER,
-        status: PaymentStatus.PENDING,
-        amount: dto.amount,
-        currency: dto.currency,
-        bankName: dto.bankName,
+        status: isStaff ? PaymentStatus.MATCHED : PaymentStatus.PENDING,
+        amount,
+        currency,
+        bankName,
         accountNumber: dto.accountNumber,
         transactionRef: dto.transactionRef,
         sourceOfFunds: dto.sourceOfFunds ?? null,
+        receivedById: isStaff ? actor.userId : null,
+        receivedAt: isStaff ? new Date() : null,
       },
     });
 
@@ -159,8 +171,50 @@ export class PaymentsService {
       action: AuditAction.CREATE,
       entity: 'Payment',
       entityId: payment.id,
-      after: { transferId: transfer.id, amount: dto.amount, status: PaymentStatus.PENDING },
+      after: { transferId: transfer.id, amount, status: payment.status },
     });
+
+    if (isStaff) {
+      // Ledger: DEBIT banco origen, CREDIT pasivo origen, CREDIT comision
+      const corridor = await this.prisma.corridor.findUnique({
+        where: { id: transfer.corridorId },
+        include: { fromCountry: true },
+      });
+      if (corridor) {
+        const countryCode = corridor.fromCountry.code;
+        const netSend = amount - Number(transfer.feeAmount);
+        await this.ledger.postDoubleEntry({
+          entryGroup: `${transfer.reference}-BANKPAY`,
+          transferId: transfer.id,
+          actor,
+          entries: [
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(`1010-${countryCode}`)).id,
+              side: LedgerEntrySide.DEBIT,
+              amount,
+              currency,
+              description: `Abono bancario ${transfer.reference}`,
+            },
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(`2030-${countryCode}`)).id,
+              side: LedgerEntrySide.CREDIT,
+              amount: netSend,
+              currency,
+              description: `Pasivo remesa ${transfer.reference}`,
+            },
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(currency === 'USD' ? '4010' : '4011')).id,
+              side: LedgerEntrySide.CREDIT,
+              amount: Number(transfer.feeAmount),
+              currency: transfer.feeCurrency,
+              description: `Comisión ${transfer.reference}`,
+            },
+          ],
+        });
+      }
+      return this.autoProcessAfterPayment(transfer.id, actor);
+    }
+
     return payment;
   }
 

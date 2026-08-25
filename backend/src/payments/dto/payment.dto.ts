@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class RegisterCashPaymentDto {
@@ -24,15 +25,19 @@ export class RegisterBankPaymentDto {
   @IsString()
   transferId: string;
 
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0.01)
-  amount: number;
+  amount?: number;
 
+  @IsOptional()
   @IsString()
-  currency: string;
+  currency?: string;
 
+  @IsOptional()
   @IsString()
-  bankName: string;
+  bankName?: string;
 
   @IsOptional()
   @IsString()

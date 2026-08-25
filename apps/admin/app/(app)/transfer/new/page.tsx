@@ -606,7 +606,7 @@ export default function NewTransferPage() {
         // Pago por transferencia bancaria con comprobante
         await post<Transfer>("/payments/bank", {
           transferId: t.id,
-          amount: t.sendAmount,
+          amount: Number(t.sendAmount) || Number(sendAmountNum),
           currency: t.sendCurrency,
           bankName: bankOrigin || "Banco Origen",
           transactionRef: bankRefNumber || undefined,
