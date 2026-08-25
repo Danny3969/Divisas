@@ -60,7 +60,7 @@ export function makeWithdrawalCode(): string {
     for (const b of bytes) s += alphabet[b % alphabet.length];
     return s;
   };
-  return `${pick(4)}-${pick(4)}-${pick(4)}`;
+  return `VLX-${pick(4)}-${pick(4)}`;
 }
 
 @Injectable()
@@ -89,11 +89,11 @@ export class TransfersService {
 
     const beneficiary = await this.prisma.beneficiary.findUnique({ where: { id: dto.beneficiaryId } });
     if (!beneficiary) throw new NotFoundException('Beneficiario no encontrado');
-    if (beneficiary.customerId !== dto.senderCustomerId) {
+    if (actor.role === Role.CUSTOMER && beneficiary.customerId !== dto.senderCustomerId) {
       throw new BadRequestException('El beneficiario no pertenece al cliente');
     }
 
-    const withdrawalCode = dto.payoutMethod === PayoutMethod.CASH ? makeWithdrawalCode() : null;
+    const withdrawalCode = makeWithdrawalCode();
 
     const transfer = await this.prisma.$transaction(async (tx) => {
       await tx.quote.update({ where: { id: quote.id }, data: { status: 'USED' } });
@@ -118,9 +118,7 @@ export class TransfersService {
           payoutAccountId: dto.payoutAccountId ?? null,
           remittanceReason: dto.remittanceReason ?? null,
           withdrawalCode,
-          withdrawalExpiresAt: withdrawalCode
-            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 días de vigencia
-            : null,
+          withdrawalExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días de vigencia
         },
       });
 

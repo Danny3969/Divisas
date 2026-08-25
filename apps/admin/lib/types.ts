@@ -133,6 +133,7 @@ export interface Transfer {
   receiveAmount: number;
   receiveCurrency: string;
   feeAmount: number;
+  feeCurrency?: string;
   fxRate: string;
   withdrawalCode?: string;
   withdrawalUsed?: boolean;

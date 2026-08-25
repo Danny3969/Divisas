@@ -13,13 +13,13 @@ export class PayoutsController {
   constructor(private service: PayoutsService) {}
 
   @Get('withdrawal/validate/:code')
-  @Roles(Role.CASHIER, Role.SUPERVISOR)
+  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.ADMIN)
   validateCode(@Param('code') code: string) {
     return this.service.validateWithdrawalCode(code);
   }
 
   @Post('cash-out')
-  @Roles(Role.CASHIER, Role.SUPERVISOR)
+  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.ADMIN)
   processCashOut(@Body() dto: ProcessCashOutDto, @CurrentUser() user: AuthUser) {
     return this.service.processCashOut(dto, user);
   }

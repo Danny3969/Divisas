@@ -13,13 +13,13 @@ export class PaymentsController {
   constructor(private service: PaymentsService) {}
 
   @Post('cash')
-  @Roles(Role.CASHIER, Role.SUPERVISOR)
+  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.ADMIN)
   registerCash(@Body() dto: RegisterCashPaymentDto, @CurrentUser() user: AuthUser) {
     return this.service.registerCashPayment(dto, user);
   }
 
   @Post('bank')
-  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.CUSTOMER)
+  @Roles(Role.CASHIER, Role.SUPERVISOR, Role.CUSTOMER, Role.ADMIN)
   registerBank(@Body() dto: RegisterBankPaymentDto, @CurrentUser() user: AuthUser) {
     return this.service.registerBankPayment(dto, user);
   }

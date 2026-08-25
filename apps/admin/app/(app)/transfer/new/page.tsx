@@ -409,11 +409,12 @@ export default function NewTransferPage() {
   const [remittanceReason, setRemittanceReason] = useState("Ayuda Familiar / Remesa");
   const [sourceOfFunds, setSourceOfFunds] = useState("Sueldo/Honorarios");
   const [highBillSerials, setHighBillSerials] = useState("");
-  const [sendAmount, setSendAmount] = useState("100");
+  const [sendAmount, setSendAmount] = useState("");
 
   // Step 3: Quote & Confirm
   const [quote, setQuote] = useState<Quote | null>(null);
   const [createdTransfer, setCreatedTransfer] = useState<Transfer | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
   const [countries, setCountries] = useState<Country[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -595,13 +596,31 @@ export default function NewTransferPage() {
       <div className="mx-auto max-w-xl space-y-6">
         <Card title="✅ Transferencia Generada con Éxito">
           <div className="space-y-4 text-center">
-            <div className="rounded-xl bg-emerald-50 p-4 border border-emerald-200">
-              <div className="text-xs text-emerald-800 uppercase tracking-wide font-semibold">Código Único de Retiro</div>
-              <div className="font-mono text-3xl font-extrabold text-emerald-950 my-1">
-                {createdTransfer.withdrawalCode ?? "RX7K-PENDIENTE"}
+            <div className="rounded-2xl bg-gradient-to-b from-emerald-50 to-teal-50/80 p-5 border-2 border-emerald-300 shadow-sm">
+              <div className="text-xs text-emerald-800 uppercase tracking-widest font-black flex items-center justify-center gap-1.5">
+                <span>🔑</span> CÓDIGO ÚNICO DE RETIRO
               </div>
-              <div className="text-xs text-emerald-700">
-                Entrega este código al cliente para que el beneficiario lo retire en ventanilla.
+              <div className="font-mono text-3xl sm:text-4xl font-black text-emerald-950 my-2.5 tracking-widest select-all">
+                {createdTransfer.withdrawalCode}
+              </div>
+              <div className="flex items-center justify-center gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (createdTransfer.withdrawalCode) {
+                      navigator.clipboard.writeText(createdTransfer.withdrawalCode);
+                      setCopiedCode(true);
+                      setTimeout(() => setCopiedCode(false), 3000);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-900 bg-emerald-200/90 hover:bg-emerald-300 px-3.5 py-1.5 rounded-lg transition-all shadow-xs"
+                >
+                  <span>{copiedCode ? "✅" : "📋"}</span>
+                  <span>{copiedCode ? "¡Código Copiado!" : "Copiar Código"}</span>
+                </button>
+              </div>
+              <div className="text-xs text-emerald-700 mt-2.5 font-medium">
+                Entrega este código al remitente. El beneficiario lo requerirá para retirar en ventanilla o recibir por Yape/Banco.
               </div>
             </div>
 
