@@ -977,7 +977,7 @@ export class AccountingService {
 
       for (const l of dto.lines) {
         const amt = Math.abs(Number(l.amount));
-        await tx.bankStatementLine.create({
+        const createdLine = await tx.bankStatementLine.create({
           data: {
             bankStatementId: statement.id,
             date: new Date(l.date),
@@ -988,6 +988,11 @@ export class AccountingService {
             matched: false,
           },
         });
+
+        // Trigger automatic reconciliation if it's a deposit
+        if (l.type === 'DEPOSIT') {
+          await this.autoMatchDepositLine(tx, createdLine.id, l.description, l.reference || '', amt, new Date(l.date));
+        }
       }
 
       return statement;
@@ -1342,4 +1347,171 @@ export class AccountingService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  private async autoMatchDepositLine(
+    tx: any,
+    lineId: string,
+    description: string,
+    reference: string,
+    amount: number,
+    date: Date,
+  ) {
+    const desc = ((description || '') + ' ' + (reference || '')).trim();
+    // Buscar patrones TRX-XXXX o VLX-XXXX
+    const trxMatch = desc.match(/TRX-[A-Z0-9]+/i);
+    const vlxMatch = desc.match(/VLX-[A-Z0-9]+-[A-Z0-9]+/i);
+
+    let targetTransfer: any = null;
+    if (trxMatch) {
+      targetTransfer = await tx.transfer.findFirst({
+        where: { reference: trxMatch[0].toUpperCase() },
+        include: {
+          riskAssessments: { orderBy: { createdAt: 'desc' }, take: 1 },
+          corridor: { include: { fromCountry: true } },
+        },
+      });
+    } else if (vlxMatch) {
+      targetTransfer = await tx.transfer.findFirst({
+        where: { withdrawalCode: vlxMatch[0].toUpperCase() },
+        include: {
+          riskAssessments: { orderBy: { createdAt: 'desc' }, take: 1 },
+          corridor: { include: { fromCountry: true } },
+        },
+      });
+    }
+
+    if (!targetTransfer) return;
+
+    // Verificar que el monto neto coincida
+    if (Math.abs(Number(targetTransfer.sendAmount)) !== Math.abs(amount)) {
+      return;
+    }
+
+    // Verificar si existe un registro de pago PENDING para este giro
+    let payment = await tx.payment.findFirst({
+      where: { transferId: targetTransfer.id, method: 'BANK_TRANSFER', status: 'PENDING' },
+    });
+
+    if (!payment) {
+      // Si el cliente no subió el pago, se auto-crea como MATCHED
+      payment = await tx.payment.create({
+        data: {
+          transferId: targetTransfer.id,
+          method: 'BANK_TRANSFER',
+          status: 'MATCHED',
+          amount,
+          currency: targetTransfer.sendCurrency,
+          bankName: 'Auto Conciliado',
+          receivedAt: new Date(),
+        },
+      });
+    } else {
+      // Si el cliente lo registró, actualizar estado a MATCHED
+      payment = await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: 'MATCHED', receivedAt: new Date() },
+      });
+    }
+
+    // Crear coincidencia de pago (PaymentMatch)
+    await tx.paymentMatch.create({
+      data: {
+        paymentId: payment.id,
+        matched: true,
+        matchType: 'BANK_STATEMENT',
+        detail: `Conciliado automáticamente desde extracto bancario.`,
+      },
+    });
+
+    // Marcar la línea del extracto como coincidente
+    await tx.bankStatementLine.update({
+      where: { id: lineId },
+      data: {
+        matched: true,
+        matchedType: 'TRANSFER',
+        matchedRef: targetTransfer.reference,
+      },
+    });
+
+    // Transiciones automáticas de estado
+    let currentStatus = targetTransfer.status;
+    const actorId = 'system';
+
+    const transition = async (from: string, to: string, note: string) => {
+      await tx.transfer.update({
+        where: { id: targetTransfer.id },
+        data: { status: to },
+      });
+      await tx.transferEvent.create({
+        data: {
+          transferId: targetTransfer.id,
+          fromStatus: from,
+          toStatus: to,
+          actorId,
+          note,
+        },
+      });
+      currentStatus = to;
+    };
+
+    if (currentStatus === 'CONFIRMED' || currentStatus === 'AWAITING_PAYMENT') {
+      await transition(currentStatus, 'PAYMENT_RECEIVED', 'Pago bancario conciliado automáticamente');
+    }
+    if (currentStatus === 'PAYMENT_RECEIVED') {
+      await transition('PAYMENT_RECEIVED', 'RECONCILIATION', 'Conciliando pago');
+      await transition('RECONCILIATION', 'RISK_CHECK', 'Evaluación de riesgo');
+    }
+    if (currentStatus === 'RISK_CHECK') {
+      const risk = targetTransfer.riskAssessments?.[0];
+      if (risk && risk.level !== 'LOW') {
+        await transition('RISK_CHECK', risk.level === 'HIGH' ? 'AML_REVIEW' : 'MANUAL_REVIEW', `Riesgo ${risk.level}`);
+      } else {
+        await transition('RISK_CHECK', 'APPROVED', 'Riesgo bajo, aprobada automáticamente');
+      }
+    }
+    if (currentStatus === 'APPROVED') {
+      await transition('APPROVED', 'SETTLEMENT_PENDING', 'Preparando liquidación');
+    }
+
+    // Registrar contabilidad en el Ledger
+    const countryCode = targetTransfer.corridor.fromCountry.code;
+    const netSend = Number(targetTransfer.sendAmount) - Number(targetTransfer.feeAmount);
+
+    const getAccount = async (code: string) => {
+      const acc = await tx.ledgerAccount.findUnique({ where: { code } });
+      if (!acc) throw new NotFoundException(`Cuenta contable ${code} no encontrada`);
+      return acc;
+    };
+
+    const bankAcc = await getAccount(`1010-${countryCode}`);
+    const liabilityAcc = await getAccount(`2030-${countryCode}`);
+    const feeAcc = await getAccount(targetTransfer.sendCurrency === 'USD' ? '4010' : '4011');
+
+    const entryGroup = `${targetTransfer.reference}-BANKPAY`;
+
+    const postEntry = async (accountId: string, side: 'DEBIT' | 'CREDIT', amt: number, desc: string) => {
+      await tx.ledgerEntry.create({
+        data: {
+          accountId,
+          transferId: targetTransfer.id,
+          entryGroup,
+          side,
+          amount: new Decimal(amt),
+          currency: targetTransfer.sendCurrency,
+          description: desc,
+        },
+      });
+
+      const delta = side === 'DEBIT' ? amt : -amt;
+      await tx.ledgerAccount.update({
+        where: { id: accountId },
+        data: { balance: { increment: new Decimal(delta) } },
+      });
+    };
+
+    await postEntry(bankAcc.id, 'DEBIT', Number(targetTransfer.sendAmount), `Abono bancario ${targetTransfer.reference}`);
+    await postEntry(liabilityAcc.id, 'CREDIT', netSend, `Pasivo remesa ${targetTransfer.reference}`);
+    await postEntry(feeAcc.id, 'CREDIT', Number(targetTransfer.feeAmount), `Comisión ${targetTransfer.reference}`);
+  }
 }
+

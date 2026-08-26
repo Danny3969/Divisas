@@ -17,6 +17,8 @@ import {
 
 @Injectable()
 export class PayoutsService {
+  private activePayouts = new Set<string>();
+
   constructor(
     private prisma: PrismaService,
     private transfers: TransfersService,
@@ -24,6 +26,7 @@ export class PayoutsService {
     private ledger: LedgerService,
     private audit: AuditService,
   ) {}
+
 
   /**
    * Validación del código de retiro (para la pantalla VALIDAR del cajero).
@@ -56,240 +59,276 @@ export class PayoutsService {
    * Soporta Retiro en Efectivo (Ventanilla), Abono Yape y Transferencia Bancaria.
    */
   async processCashOut(dto: ProcessCashOutDto, actor: AuthUser) {
-    const transfer = await this.validateWithdrawalCode(dto.withdrawalCode);
-    if (transfer.id !== dto.transferId) {
-      throw new BadRequestException('El Código Único de VALEX no corresponde a esta transferencia');
+    const code = dto.withdrawalCode.trim();
+    if (this.activePayouts.has(code)) {
+      throw new BadRequestException('Esta transacción ya se está procesando actualmente. Intente de nuevo.');
     }
+    this.activePayouts.add(code);
 
-    if (transfer.withdrawalUsed || transfer.status === TransferStatus.COMPLETED || transfer.status === TransferStatus.PAID) {
-      throw new BadRequestException('Esta transferencia ya fue CANCELADA / PAGADA y los fondos ya fueron entregados.');
-    }
-
-    const corridor = await this.prisma.corridor.findUnique({
-      where: { id: transfer.corridorId },
-      include: { toCountry: true },
-    });
-    const countryCode = corridor?.toCountry.code || 'PE';
-    const amount = Number(transfer.receiveAmount);
-    const currency = transfer.receiveCurrency;
-
-    // 1. Verificación del documento del beneficiario si aplica
-    if (
-      dto.beneficiaryDocument &&
-      transfer.beneficiary.documentNumber &&
-      transfer.beneficiary.documentNumber !== '00000000' &&
-      dto.beneficiaryDocument !== '00000000' &&
-      transfer.beneficiary.documentNumber.trim() !== dto.beneficiaryDocument.trim()
-    ) {
-      const nextAttempts = transfer.withdrawalAttempts + 1;
-      const isBlocked = nextAttempts >= 3;
-
-      await this.prisma.transfer.update({
-        where: { id: transfer.id },
-        data: {
-          withdrawalAttempts: nextAttempts,
-          status: isBlocked ? TransferStatus.RISK_BLOCKED : transfer.status,
-        },
-      });
-
-      await this.prisma.transferEvent.create({
-        data: {
-          transferId: transfer.id,
-          fromStatus: transfer.status,
-          toStatus: isBlocked ? TransferStatus.RISK_BLOCKED : transfer.status,
-          actorId: actor.userId,
-          note: isBlocked
-            ? `BLOQUEO DE SEGURIDAD: 3 intentos fallidos de retiro con documento ${dto.beneficiaryDocument}`
-            : `Intento fallido de retiro (${nextAttempts}/3) con documento ${dto.beneficiaryDocument}`,
-        },
-      });
-
-      if (isBlocked) {
-        throw new BadRequestException(
-          'Operación BLOQUEADA por seguridad tras 3 intentos fallidos de documento. Notifique al Administrador.',
-        );
+    try {
+      const transfer = await this.validateWithdrawalCode(code);
+      if (transfer.id !== dto.transferId) {
+        throw new BadRequestException('El Código Único de VALEX no corresponde a esta transferencia');
       }
-      throw new BadRequestException(`El documento no coincide con el beneficiario. Intento ${nextAttempts}/3`);
-    }
 
-    if (transfer.status === TransferStatus.SETTLEMENT_PENDING) {
-      await this.transfers.transition(transfer.id, TransferStatus.PAYOUT_PROCESSING, actor, 'Procesando entrega');
-    }
+      if (transfer.withdrawalUsed || transfer.status === TransferStatus.COMPLETED || transfer.status === TransferStatus.PAID) {
+        throw new BadRequestException('Esta transferencia ya fue CANCELADA / PAGADA y los fondos ya fueron entregados.');
+      }
 
-    let cashMovementId: string | null = null;
+      // Reclamar el retiro atómicamente antes de procesar el pago para prevenir cobros concurrentes
+      const claimResult = await this.prisma.transfer.updateMany({
+        where: {
+          id: transfer.id,
+          withdrawalUsed: false,
+          status: { in: [TransferStatus.SETTLEMENT_PENDING, TransferStatus.PAYOUT_PROCESSING] },
+        },
+        data: {
+          withdrawalUsed: true,
+        },
+      });
 
-    // 2. Proceso según la Forma de Entrega
-    if (transfer.payoutMethod === PayoutMethod.CASH) {
-      // Retiro en Efectivo de Ventanilla: descuenta saldo de la caja física
-      let cashAccountId = dto.cashAccountId;
-      if (!cashAccountId) {
-        const defaultAcc = await this.prisma.cashAccount.findFirst({
-          where: { currency },
+      if (claimResult.count === 0) {
+        throw new BadRequestException('El código de retiro ya fue utilizado en otra transacción o la transferencia no está lista.');
+      }
+
+      const corridor = await this.prisma.corridor.findUnique({
+        where: { id: transfer.corridorId },
+        include: { toCountry: true },
+      });
+      const countryCode = corridor?.toCountry.code || 'PE';
+      const amount = Number(transfer.receiveAmount);
+      const currency = transfer.receiveCurrency;
+
+      // 1. Verificación del documento del beneficiario si aplica
+      if (
+        dto.beneficiaryDocument &&
+        transfer.beneficiary.documentNumber &&
+        transfer.beneficiary.documentNumber !== '00000000' &&
+        dto.beneficiaryDocument !== '00000000' &&
+        transfer.beneficiary.documentNumber.trim() !== dto.beneficiaryDocument.trim()
+      ) {
+        const nextAttempts = transfer.withdrawalAttempts + 1;
+        const isBlocked = nextAttempts >= 3;
+
+        await this.prisma.transfer.update({
+          where: { id: transfer.id },
+          data: {
+            withdrawalAttempts: nextAttempts,
+            status: isBlocked ? TransferStatus.RISK_BLOCKED : transfer.status,
+            withdrawalUsed: false, // Resetear a false porque el intento falló
+          },
         });
-        cashAccountId = defaultAcc?.id;
+
+        await this.prisma.transferEvent.create({
+          data: {
+            transferId: transfer.id,
+            fromStatus: transfer.status,
+            toStatus: isBlocked ? TransferStatus.RISK_BLOCKED : transfer.status,
+            actorId: actor.userId,
+            note: isBlocked
+              ? `BLOQUEO DE SEGURIDAD: 3 intentos fallidos de retiro con documento ${dto.beneficiaryDocument}`
+              : `Intento fallido de retiro (${nextAttempts}/3) con documento ${dto.beneficiaryDocument}`,
+          },
+        });
+
+        if (isBlocked) {
+          throw new BadRequestException(
+            'Operación BLOQUEADA por seguridad tras 3 intentos fallidos de documento. Notifique al Administrador.',
+          );
+        }
+        throw new BadRequestException(`El documento no coincide con el beneficiario. Intento ${nextAttempts}/3`);
       }
 
-      if (!cashAccountId) {
-        throw new BadRequestException('Debe seleccionar la caja de donde se entregará el efectivo');
+      if (transfer.status === TransferStatus.SETTLEMENT_PENDING) {
+        await this.transfers.transition(transfer.id, TransferStatus.PAYOUT_PROCESSING, actor, 'Procesando entrega');
       }
 
-      const cashAccount = await this.prisma.cashAccount.findUnique({
-        where: { id: cashAccountId },
-        include: { office: { include: { country: true } } },
-      });
-      if (!cashAccount) throw new NotFoundException('Cuenta de caja no encontrada');
+      let cashMovementId: string | null = null;
 
-      const session = await this.cash.requireOpenSession(cashAccountId);
+      // 2. Proceso según la Forma de Entrega
+      if (transfer.payoutMethod === PayoutMethod.CASH) {
+        // Retiro en Efectivo de Ventanilla: descuenta saldo de la caja física
+        let cashAccountId = dto.cashAccountId;
+        if (!cashAccountId) {
+          const defaultAcc = await this.prisma.cashAccount.findFirst({
+            where: { currency },
+          });
+          cashAccountId = defaultAcc?.id;
+        }
 
-      if (Number(cashAccount.balance) < amount) {
-        throw new BadRequestException(`Saldo de caja insuficiente (${cashAccount.balance} ${currency} disponible para entregar ${amount} ${currency})`);
+        if (!cashAccountId) {
+          throw new BadRequestException('Debe seleccionar la caja de donde se entregará el efectivo');
+        }
+
+        const cashAccount = await this.prisma.cashAccount.findUnique({
+          where: { id: cashAccountId },
+          include: { office: { include: { country: true } } },
+        });
+        if (!cashAccount) throw new NotFoundException('Cuenta de caja no encontrada');
+
+        const session = await this.cash.requireOpenSession(cashAccountId);
+
+        if (Number(cashAccount.balance) < amount) {
+          throw new BadRequestException(`Saldo de caja insuficiente (${cashAccount.balance} ${currency} disponible para entregar ${amount} ${currency})`);
+        }
+
+        const movement = await this.cash.applyCashMovement({
+          cashAccountId,
+          sessionId: session.id,
+          type: CashMovementType.CASH_OUT,
+          amount,
+          currency,
+          description: `CASH-OUT retiro ${transfer.reference}`,
+          actorId: actor.userId,
+          transferId: transfer.id,
+        });
+        cashMovementId = movement.id;
+
+        await this.prisma.payout.create({
+          data: {
+            transferId: transfer.id,
+            method: PayoutMethod.CASH,
+            status: PayoutStatus.PAID,
+            amount,
+            currency,
+            cashMovementId: movement.id,
+            processedById: actor.userId,
+            processedAt: new Date(),
+            pickupAt: new Date(),
+          },
+        });
+
+        // Contabilidad Efectivo: DEBIT Pasivo Remesas (disminuye pasivo), CREDIT Caja Efectivo (disminuye saldo caja)
+        await this.ledger.postDoubleEntry({
+          entryGroup: `${transfer.reference}-CASHOUT`,
+          transferId: transfer.id,
+          actor,
+          entries: [
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(`2030-${countryCode}`)).id,
+              side: LedgerEntrySide.DEBIT,
+              amount,
+              currency,
+              description: `Cierre pasivo retiro ${transfer.reference}`,
+            },
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(`1020-${countryCode}`)).id,
+              side: LedgerEntrySide.CREDIT,
+              amount,
+              currency,
+              description: `Entrega de efectivo en ventanilla ${transfer.reference}`,
+            },
+          ],
+        });
+      } else if (transfer.payoutMethod === PayoutMethod.MOBILE_WALLET) {
+        // Abono por Yape (Billetera Móvil)
+        const payout = await this.prisma.payout.create({
+          data: {
+            transferId: transfer.id,
+            method: PayoutMethod.MOBILE_WALLET,
+            status: PayoutStatus.PAID,
+            amount,
+            currency,
+            bankRef: `YAPE-${transfer.beneficiary.phone || transfer.reference}`,
+            processedById: actor.userId,
+            processedAt: new Date(),
+          },
+        });
+
+        // Contabilidad Yape: DEBIT Pasivo Remesas, CREDIT Banco BCP / Yape (1010-PE)
+        await this.ledger.postDoubleEntry({
+          entryGroup: `${transfer.reference}-YAPEPAYOUT`,
+          transferId: transfer.id,
+          actor,
+          entries: [
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(`2030-${countryCode}`)).id,
+              side: LedgerEntrySide.DEBIT,
+              amount,
+              currency,
+              description: `Cierre pasivo abono Yape ${transfer.reference}`,
+            },
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(`1010-${countryCode}`)).id,
+              side: LedgerEntrySide.CREDIT,
+              amount,
+              currency,
+              description: `Abono Yape ${transfer.beneficiary.fullName} ${transfer.reference}`,
+            },
+          ],
+        });
+      } else {
+        // Abono por Cuenta Bancaria
+        const payout = await this.prisma.payout.create({
+          data: {
+            transferId: transfer.id,
+            method: PayoutMethod.BANK,
+            status: PayoutStatus.PAID,
+            amount,
+            currency,
+            bankName: transfer.payoutAccount?.bankName ?? 'Banco Destino',
+            accountNumber: transfer.payoutAccount?.accountNumber ?? null,
+            bankRef: `BANK-${transfer.reference}`,
+            processedById: actor.userId,
+            processedAt: new Date(),
+          },
+        });
+
+        // Contabilidad Banco: DEBIT Pasivo Remesas, CREDIT Banco Destino (1010-PE / 1010-EC)
+        await this.ledger.postDoubleEntry({
+          entryGroup: `${transfer.reference}-BANKPAYOUT`,
+          transferId: transfer.id,
+          actor,
+          entries: [
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(`2030-${countryCode}`)).id,
+              side: LedgerEntrySide.DEBIT,
+              amount,
+              currency,
+              description: `Cierre pasivo transferencia bancaria ${transfer.reference}`,
+            },
+            {
+              accountId: (await this.ledger.mustGetAccountByCode(`1010-${countryCode}`)).id,
+              side: LedgerEntrySide.CREDIT,
+              amount,
+              currency,
+              description: `Transferencia bancaria ${transfer.beneficiary.fullName} ${transfer.reference}`,
+            },
+          ],
+        });
       }
 
-      const movement = await this.cash.applyCashMovement({
-        cashAccountId,
-        sessionId: session.id,
-        type: CashMovementType.CASH_OUT,
-        amount,
-        currency,
-        description: `CASH-OUT retiro ${transfer.reference}`,
-        actorId: actor.userId,
-        transferId: transfer.id,
-      });
-      cashMovementId = movement.id;
+      await this.transfers.transition(transfer.id, TransferStatus.PAID, actor, 'Fondos entregados al beneficiario');
+      await this.transfers.transition(transfer.id, TransferStatus.COMPLETED, actor, 'Operación CANCELADA / PAGADA con éxito');
 
-      await this.prisma.payout.create({
-        data: {
-          transferId: transfer.id,
-          method: PayoutMethod.CASH,
-          status: PayoutStatus.PAID,
-          amount,
-          currency,
-          cashMovementId: movement.id,
-          processedById: actor.userId,
-          processedAt: new Date(),
-          pickupAt: new Date(),
-        },
-      });
-
-      // Contabilidad Efectivo: DEBIT Pasivo Remesas (disminuye pasivo), CREDIT Caja Efectivo (disminuye saldo caja)
-      await this.ledger.postDoubleEntry({
-        entryGroup: `${transfer.reference}-CASHOUT`,
-        transferId: transfer.id,
+      await this.audit.record({
         actor,
-        entries: [
-          {
-            accountId: (await this.ledger.mustGetAccountByCode(`2030-${countryCode}`)).id,
-            side: LedgerEntrySide.DEBIT,
-            amount,
-            currency,
-            description: `Cierre pasivo retiro ${transfer.reference}`,
-          },
-          {
-            accountId: (await this.ledger.mustGetAccountByCode(`1020-${countryCode}`)).id,
-            side: LedgerEntrySide.CREDIT,
-            amount,
-            currency,
-            description: `Entrega de efectivo en ventanilla ${transfer.reference}`,
-          },
-        ],
-      });
-    } else if (transfer.payoutMethod === PayoutMethod.MOBILE_WALLET) {
-      // Abono por Yape (Billetera Móvil)
-      const payout = await this.prisma.payout.create({
-        data: {
-          transferId: transfer.id,
-          method: PayoutMethod.MOBILE_WALLET,
-          status: PayoutStatus.PAID,
-          amount,
-          currency,
-          bankRef: `YAPE-${transfer.beneficiary.phone || transfer.reference}`,
-          processedById: actor.userId,
-          processedAt: new Date(),
-        },
+        action: AuditAction.PAYOUT,
+        entity: 'Payout',
+        entityId: transfer.id,
+        after: { transferId: transfer.id, amount, currency, payoutMethod: transfer.payoutMethod },
       });
 
-      // Contabilidad Yape: DEBIT Pasivo Remesas, CREDIT Banco BCP / Yape (1010-PE)
-      await this.ledger.postDoubleEntry({
-        entryGroup: `${transfer.reference}-YAPEPAYOUT`,
-        transferId: transfer.id,
-        actor,
-        entries: [
-          {
-            accountId: (await this.ledger.mustGetAccountByCode(`2030-${countryCode}`)).id,
-            side: LedgerEntrySide.DEBIT,
-            amount,
-            currency,
-            description: `Cierre pasivo abono Yape ${transfer.reference}`,
-          },
-          {
-            accountId: (await this.ledger.mustGetAccountByCode(`1010-${countryCode}`)).id,
-            side: LedgerEntrySide.CREDIT,
-            amount,
-            currency,
-            description: `Abono Yape ${transfer.beneficiary.fullName} ${transfer.reference}`,
-          },
-        ],
-      });
-    } else {
-      // Abono por Cuenta Bancaria
-      const payout = await this.prisma.payout.create({
-        data: {
-          transferId: transfer.id,
-          method: PayoutMethod.BANK,
-          status: PayoutStatus.PAID,
-          amount,
-          currency,
-          bankName: transfer.payoutAccount?.bankName ?? 'Banco Destino',
-          accountNumber: transfer.payoutAccount?.accountNumber ?? null,
-          bankRef: `BANK-${transfer.reference}`,
-          processedById: actor.userId,
-          processedAt: new Date(),
-        },
-      });
-
-      // Contabilidad Banco: DEBIT Pasivo Remesas, CREDIT Banco Destino (1010-PE / 1010-EC)
-      await this.ledger.postDoubleEntry({
-        entryGroup: `${transfer.reference}-BANKPAYOUT`,
-        transferId: transfer.id,
-        actor,
-        entries: [
-          {
-            accountId: (await this.ledger.mustGetAccountByCode(`2030-${countryCode}`)).id,
-            side: LedgerEntrySide.DEBIT,
-            amount,
-            currency,
-            description: `Cierre pasivo transferencia bancaria ${transfer.reference}`,
-          },
-          {
-            accountId: (await this.ledger.mustGetAccountByCode(`1010-${countryCode}`)).id,
-            side: LedgerEntrySide.CREDIT,
-            amount,
-            currency,
-            description: `Transferencia bancaria ${transfer.beneficiary.fullName} ${transfer.reference}`,
-          },
-        ],
-      });
+      return this.transfers.findOne(transfer.id);
+    } catch (err) {
+      // Revertir el estado de reclamo si falló algún proceso intermedio
+      try {
+        const check = await this.prisma.transfer.findUnique({ where: { id: dto.transferId } });
+        if (check && check.status !== TransferStatus.RISK_BLOCKED) {
+          await this.prisma.transfer.update({
+            where: { id: dto.transferId },
+            data: { withdrawalUsed: false },
+          });
+        }
+      } catch (revertErr) {
+        // Silenciar error de reversión
+      }
+      throw err;
+    } finally {
+      this.activePayouts.delete(code);
     }
-
-    // 3. Invalidar código de retiro para que NO se pueda volver a pagar
-    await this.prisma.transfer.update({
-      where: { id: transfer.id },
-      data: { withdrawalUsed: true },
-    });
-
-    await this.transfers.transition(transfer.id, TransferStatus.PAID, actor, 'Fondos entregados al beneficiario');
-    await this.transfers.transition(transfer.id, TransferStatus.COMPLETED, actor, 'Operación CANCELADA / PAGADA con éxito');
-
-    await this.audit.record({
-      actor,
-      action: AuditAction.PAYOUT,
-      entity: 'Payout',
-      entityId: transfer.id,
-      after: { transferId: transfer.id, amount, currency, payoutMethod: transfer.payoutMethod },
-    });
-
-    return this.transfers.findOne(transfer.id);
   }
+
 
   /**
    * Payout bancario (simulado con sandbox de banco).

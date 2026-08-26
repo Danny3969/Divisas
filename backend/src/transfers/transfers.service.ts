@@ -192,29 +192,42 @@ export class TransfersService {
       );
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const next = await tx.transfer.update({ where: { id }, data: { status: toStatus } });
-      await tx.transferEvent.create({
-        data: {
-          transferId: id,
-          fromStatus: transfer.status,
-          toStatus,
-          actorId: actor.userId,
-          note,
-        },
+    try {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const next = await tx.transfer.update({
+          where: { id, status: transfer.status },
+          data: { status: toStatus },
+        });
+        await tx.transferEvent.create({
+          data: {
+            transferId: id,
+            fromStatus: transfer.status,
+            toStatus,
+            actorId: actor.userId,
+            note,
+          },
+        });
+        return next;
       });
-      return next;
-    });
 
-    await this.audit.record({
-      actor,
-      action: AuditAction.STATUS_CHANGE,
-      entity: 'Transfer',
-      entityId: id,
-      before: { status: transfer.status },
-      after: { status: toStatus },
-    });
-    return updated;
+      await this.audit.record({
+        actor,
+        action: AuditAction.STATUS_CHANGE,
+        entity: 'Transfer',
+        entityId: id,
+        before: { status: transfer.status },
+        after: { status: toStatus },
+      });
+      return updated;
+    } catch (err) {
+      if (err.code === 'P2025') {
+        throw new BadRequestException(
+          'La transferencia ya cambió de estado o fue modificada por otra operación concurrente.',
+        );
+      }
+      throw err;
+    }
+
   }
 
   async findOne(id: string, actor?: AuthUser) {

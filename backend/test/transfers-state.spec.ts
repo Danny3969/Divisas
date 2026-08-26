@@ -78,10 +78,10 @@ describe('Generadores de referencia y código', () => {
     }
   });
 
-  it('genera códigos de retiro con formato XXXX-XXXX-XXXX', () => {
+  it('genera códigos de retiro con formato VLX-XXXX-XXXX', () => {
     for (let i = 0; i < 50; i++) {
       const code = makeWithdrawalCode();
-      expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+      expect(code).toMatch(/^VLX-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     }
   });
 
