@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <rect width="1600" height="900" fill="#2C3140"/>
+  <polygon points="630.0,82.0 652.6,171.1 675.3,148.5 903.5,376.7 880.9,399.4 970.0,422.0 947.4,332.9 924.7,355.5 696.5,127.3 719.1,104.6" fill="#FFFFFF"/>
+  <polygon points="630.0,422.0 719.1,399.4 696.5,376.7 924.7,148.5 947.4,171.1 970.0,82.0 880.9,104.6 903.5,127.3 675.3,355.5 652.6,332.9" fill="#00E5FF"/>
+  <text x="800" y="547"
+    font-family="Arial Black, Impact, sans-serif"
+    font-weight="900" font-size="148" letter-spacing="18"
+    fill="#FFFFFF" text-anchor="middle">VALEX</text>
+</svg>

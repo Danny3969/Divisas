@@ -18,8 +18,10 @@ _Última actualización: 2026-08-25_
 ```
 
 ## 🗄️ Base de Datos
-- **PostgreSQL 16** (Docker Compose) en `localhost:5433`
-- **Usuario:** `divisas` | **Password:** `divisas_dev` | **DB:** `divisas`
+- **Supabase Cloud PostgreSQL**
+- **Proyecto ID:** `cgrkckxqnesrewfweasr`
+- **Host:** `aws-0-us-east-1.pooler.supabase.com:5432` (conexión directa) / `6543` (pooler)
+- **Base de Datos:** `postgres`
 - **ORM:** Prisma
 
 ## 👤 Usuarios del Sistema
@@ -48,13 +50,13 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Caja (puerto independiente):** http://localhost:3002
 
 ## 🌍 URLs Públicas Activas (Cloudflare Tunnels)
-- **Portal Web Unificado (Admin & Caja):** https://bet-kansas-organizations-followed.trycloudflare.com
-- **VALEX Realizados:** https://bet-kansas-organizations-followed.trycloudflare.com/transfers
-- **VALEX Recibidos (Caja de Retiro):** https://bet-kansas-organizations-followed.trycloudflare.com/payout
-- **Nuevo VALEX:** https://bet-kansas-organizations-followed.trycloudflare.com/transfer/new
-- **Panel General (Dashboard):** https://bet-kansas-organizations-followed.trycloudflare.com/dashboard
-- **Backend API:** https://volume-cartridge-previews-cigarettes.trycloudflare.com/api
-- **Descarga Directa APK Móvil (Android):** https://bet-kansas-organizations-followed.trycloudflare.com/downloads/VALEX.apk
+- **Portal Web Unificado (Admin & Caja):** https://toolkit-knight-robertson-texture.trycloudflare.com
+- **VALEX Realizados:** https://toolkit-knight-robertson-texture.trycloudflare.com/transfers
+- **VALEX Recibidos (Caja de Retiro):** https://toolkit-knight-robertson-texture.trycloudflare.com/payout
+- **Nuevo VALEX:** https://toolkit-knight-robertson-texture.trycloudflare.com/transfer/new
+- **Panel General (Dashboard):** https://toolkit-knight-robertson-texture.trycloudflare.com/dashboard
+- **Backend API:** https://asin-interview-editorials-motorcycle.trycloudflare.com/api
+- **Descarga Directa APK Móvil (Android):** https://toolkit-knight-robertson-texture.trycloudflare.com/downloads/VALEX.apk
 - **Dominio Comprado en Espera de DNS:** `valex-app.com`
 
 ## 📱 Aplicación Móvil Android (APK)
