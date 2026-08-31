@@ -110,14 +110,11 @@ export default function LoginScreen() {
 
   return (
     <Screen style={{ justifyContent: "center", backgroundColor: "#0f172a" }}>
-      <View style={{ alignItems: "center", marginBottom: 20 }}>
+      <View style={{ alignItems: "center", marginBottom: 24 }}>
         <Image
-          source={require("../../assets/images/splash-icon.png")}
-          style={{ width: 84, height: 84, resizeMode: "contain", marginBottom: 12, borderRadius: 20 }}
+          source={require("../../assets/images/valex-logo.png")}
+          style={{ width: 180, height: 110, resizeMode: "contain", marginBottom: 4 }}
         />
-        <Text style={{ fontSize: 32, fontWeight: "900", color: "#FFFFFF", letterSpacing: 2 }}>
-          VALEX
-        </Text>
         <Text style={{ color: "#00E5FF", fontSize: 12, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase" }}>
           Plataforma de Envíos & Ventanilla
         </Text>

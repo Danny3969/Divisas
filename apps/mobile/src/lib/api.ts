@@ -3,7 +3,7 @@ import type { AuthUser } from "./types";
 
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
-  "https://solved-loud-rating-belly.trycloudflare.com/api";
+  "https://volume-cartridge-previews-cigarettes.trycloudflare.com/api";
 
 export const TOKEN_KEY = "valex_token";
 export const USER_KEY = "valex_user";
