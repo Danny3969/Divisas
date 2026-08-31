@@ -57,7 +57,9 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Panel General (Dashboard):** https://bet-kansas-organizations-followed.trycloudflare.com/dashboard
 - **Backend API:** https://volume-cartridge-previews-cigarettes.trycloudflare.com/api
 - **Consola de Caja Legada:** https://diversity-fails-businesses-oem.trycloudflare.com
-- **Descarga Directa APK Móvil (Android):** https://bet-kansas-organizations-followed.trycloudflare.com/downloads/VALEX.apk
+- **Descarga Universal (Cualquier celular Android - 37 MB):** https://bet-kansas-organizations-followed.trycloudflare.com/downloads/VALEX.apk
+- **Descarga Ultraligera (Celulares Modernos ARM64 - 18 MB):** https://bet-kansas-organizations-followed.trycloudflare.com/downloads/VALEX-arm64.apk
+- **Optimizaciones Aplicadas:** Proguard / R8 minifier, compresión de recursos (shrinkResources), eliminación de emuladores x86 e integración de biometría nativa.
 - **Dominio Comprado en Espera de DNS:** `valex-app.com`
 
 ## 📱 Aplicación Móvil Android (APK)
