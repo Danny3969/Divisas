@@ -128,13 +128,19 @@ npx pm2 logs                         # Ver logs en tiempo real
 - [x] **Panel Web CRUD Completo:** Creación, edición, activación/desactivación y eliminación de tramos en vivo.
 - [x] **Simulador Interactivo:** Cálculo en tiempo real de equivalencia en soles, tramo aplicado, comisión y neto a entregar.
 
-### 6. Módulo de Contabilidad Empresarial y Tesorería (`/ledger`)
-- [x] **Configuración de Saldos Reales Iniciales / Purga Limpia:** Apertura limpia con saldos reales en bancos y cajas.
-- [x] **Gestión Bancaria y Conciliación Inteligente:** Conciliador de extractos en CSV/Excel con detección y cotejo automático.
-- [x] **Directorio de Proveedores y Gastos:** Registro de facturas con desglose de impuestos (IVA 15% / IGV 18%) y visor de comprobantes adjuntos.
-- [x] **Personal y Nómina de Sueldos:** Liquidación de sueldos con 1 clic afectando cuentas de tesorería y gastos de nómina (`5030`).
-- [x] **Traspasos Internos y Capital:** Fondeo de cajas, depósitos a bancos y aportes/retiros de socios.
-- [x] **Libro Diario Double-Entry:** Exportación a Excel / CSV en 1 clic.
+### 7. 📲 Notificaciones Inteligentes por WhatsApp (Web + Móvil)
+- [x] **Comprobante al Beneficiario (Destinatario):** Enlace directo con texto pre-formateado que incluye el monto exacto a cobrar en destino, nombre del remitente y el **Código Único de VALEX** para retiro en ventanilla.
+- [x] **Ticket de Emisión al Remitente:** Enlace con desglose de montos, comisión cobrada, referencia y código emitido.
+- [x] **Constancia de Entrega / Pago:** Al confirmar el cobro en `/payout`, se habilita el botón para enviar inmediatamente la constancia de que el dinero fue entregado al beneficiario.
+- [x] **Disponibilidad Total:** Presente en la emisión (`/transfer/new`), ficha de detalle (`/transfers/detail`), caja de retiro (`/payout`) y en la aplicación móvil APK.
+
+### 8. 📱 Aplicación Móvil Android (`com.valex.app`) para Operadores
+- [x] **Modo Operador de Ventanilla:** Reconocimiento de roles `ADMIN`, `CASHIER` y `SUPERVISOR` al iniciar sesión.
+- [x] **Acceso Directo a Emisión y Giros:** Emisión inmediata de nuevos VALEX y consulta de giros desde el celular.
+- [x] **Compilación Release:** Binario `VALEX.apk` actualizado y disponible para descarga en `/downloads/VALEX.apk`.
+
+### 9. 🚚 Traslado Físico de Fondos de Frontera (Cross-Border Cash Transport)
+- [x] **Compensación Macará 🇪🇨 ↔ Sullana/Aguas Verdes 🇵🇪:** Módulo de traspaso entre cajas físicas transfronterizas para trasladar dólares acumulados en Ecuador hacia soles necesarios en Perú sin intermediarios bancarios internacionales.
 
 ---
 
