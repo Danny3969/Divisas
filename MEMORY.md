@@ -1,5 +1,5 @@
 # 📋 MEMORY — Proyecto VALEX (Cambio de Divisas & Giros Internacionales)
-_Última actualización: 2026-08-25_
+_Última actualización: 2026-08-31_
 
 ## 🔗 Repositorio GitHub
 - **URL:** https://github.com/Danny3969/Divisas
@@ -65,11 +65,11 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Dominio Comprado en Espera de DNS:** `valex-app.com`
 
 ## 📱 Aplicación Móvil Android (APK)
-- **Ruta Local del APK:** `/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/aplicaciones/mobile/VALEX-v1.0.0.apk`
-- **Descarga Web:** `http://localhost:3001/downloads/VALEX.apk`
-- **Tamaño:** 103 MB
+- **Ruta Local del APK:** `/Users/contabilidad/.gemini/antigravity-ide/scratch/Divisas/apps/admin/public/downloads/VALEX-arm64.apk`
+- **Descarga Web:** `http://localhost:3001/downloads/VALEX-arm64.apk` (19 MB) / `http://localhost:3001/downloads/VALEX.apk` (38 MB)
+- **Tamaño:** 19 MB (ARM64) / 38 MB (Universal)
 - **Package Android:** `com.valex.app`
-- **Configuración:** Conectado a la API pública / local con la identidad y el icono oficial de VALEX.
+- **Configuración:** Conectado a la API activa de Cloudflare con Splash Screen oficial, Biometría nativa y nombre VALEX.
 
 > Para consultar URLs si se reinician los túneles:
 > `grep "trycloudflare.com" ~/.pm2/logs/divisas-tunnel-admin-error.log | tail -n 1`
