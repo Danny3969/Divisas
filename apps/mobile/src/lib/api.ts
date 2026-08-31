@@ -7,6 +7,9 @@ export const API_URL =
 
 export const TOKEN_KEY = "valex_token";
 export const USER_KEY = "valex_user";
+export const BIOMETRICS_ENABLED_KEY = "valex_biometrics_enabled";
+export const SAVED_EMAIL_KEY = "valex_saved_email";
+export const SAVED_PASS_KEY = "valex_saved_pass";
 
 export async function getToken(): Promise<string | null> {
   try {
@@ -41,6 +44,41 @@ export async function clearSession() {
     await AsyncStorage.removeItem(USER_KEY);
   } catch {
     // ignore
+  }
+}
+
+export async function isBiometricsSaved(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(BIOMETRICS_ENABLED_KEY);
+    return val === "true";
+  } catch {
+    return false;
+  }
+}
+
+export async function setBiometricsSaved(enabled: boolean, email?: string, pass?: string) {
+  try {
+    await AsyncStorage.setItem(BIOMETRICS_ENABLED_KEY, enabled ? "true" : "false");
+    if (enabled && email && pass) {
+      await AsyncStorage.setItem(SAVED_EMAIL_KEY, email);
+      await AsyncStorage.setItem(SAVED_PASS_KEY, pass);
+    } else if (!enabled) {
+      await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
+      await AsyncStorage.removeItem(SAVED_PASS_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export async function getSavedBiometricCredentials(): Promise<{ email: string; pass: string } | null> {
+  try {
+    const email = await AsyncStorage.getItem(SAVED_EMAIL_KEY);
+    const pass = await AsyncStorage.getItem(SAVED_PASS_KEY);
+    if (email && pass) return { email, pass };
+    return null;
+  } catch {
+    return null;
   }
 }
 

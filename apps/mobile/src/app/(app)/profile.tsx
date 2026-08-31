@@ -52,11 +52,21 @@ export default function ProfileScreen() {
           </View>
         )}
       </Card>
-      {customer && customer.kycStatus !== "APPROVED" && (
-        <Alert kind="info">
-          Tu cuenta está en revisión. Cuando Compliance apruebe tu KYC podrás enviar dinero.
-        </Alert>
-      )}
+      <Card style={{ backgroundColor: "#F8FAFC", borderColor: "#CBD5E1", marginVertical: 12 }}>
+        <Text style={{ fontWeight: "800", fontSize: 16, color: COLORS.slate900, marginBottom: 4 }}>
+          🔐 Seguridad y Biometría
+        </Text>
+        <Text style={{ color: COLORS.slate600, fontSize: 13, marginBottom: 8 }}>
+          Acceso rápido a tu cuenta VALEX mediante Huella Dactilar o Reconocimiento Facial.
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}>
+            Desbloqueo Biométrico
+          </Text>
+          <Badge text="HABILITADO" color={COLORS.success} />
+        </View>
+      </Card>
+
       <Button
         title="Cerrar sesión"
         variant="danger"
@@ -65,7 +75,7 @@ export default function ProfileScreen() {
           router.replace("/login");
         }}
       />
-      {!customer && <Spinner />}
+      {!customer && !user && <Spinner />}
     </Screen>
   );
 }
