@@ -50,14 +50,14 @@ npx pm2 logs                         # Ver logs en tiempo real
 - **Caja (puerto independiente):** http://localhost:3002
 
 ## 🌍 URLs Públicas Activas (Cloudflare Tunnels)
-- **Portal Web Unificado (Admin & Caja):** https://corners-linda-floor-comes.trycloudflare.com
-- **VALEX Realizados:** https://corners-linda-floor-comes.trycloudflare.com/transfers
-- **VALEX Recibidos (Caja de Retiro):** https://corners-linda-floor-comes.trycloudflare.com/payout
-- **Nuevo VALEX:** https://corners-linda-floor-comes.trycloudflare.com/transfer/new
-- **Panel General (Dashboard):** https://corners-linda-floor-comes.trycloudflare.com/dashboard
-- **Backend API:** https://mac-beaver-degree-gis.trycloudflare.com/api
-- **Consola de Caja Legada:** https://pillow-presents-language-stewart.trycloudflare.com
-- **Descarga Directa APK Móvil (Android):** https://corners-linda-floor-comes.trycloudflare.com/downloads/VALEX.apk
+- **Portal Web Unificado (Admin & Caja):** https://bet-kansas-organizations-followed.trycloudflare.com
+- **VALEX Realizados:** https://bet-kansas-organizations-followed.trycloudflare.com/transfers
+- **VALEX Recibidos (Caja de Retiro):** https://bet-kansas-organizations-followed.trycloudflare.com/payout
+- **Nuevo VALEX:** https://bet-kansas-organizations-followed.trycloudflare.com/transfer/new
+- **Panel General (Dashboard):** https://bet-kansas-organizations-followed.trycloudflare.com/dashboard
+- **Backend API:** https://volume-cartridge-previews-cigarettes.trycloudflare.com/api
+- **Consola de Caja Legada:** https://diversity-fails-businesses-oem.trycloudflare.com
+- **Descarga Directa APK Móvil (Android):** https://bet-kansas-organizations-followed.trycloudflare.com/downloads/VALEX.apk
 - **Dominio Comprado en Espera de DNS:** `valex-app.com`
 
 ## 📱 Aplicación Móvil Android (APK)
