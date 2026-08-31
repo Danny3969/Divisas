@@ -346,7 +346,7 @@ export default function PayoutPage() {
             )}
 
             {!validForPayout && (
-              <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 text-center space-y-1.5">
+              <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 text-center space-y-2.5">
                 <div className="text-sm font-black text-emerald-950 flex items-center justify-center gap-2">
                   <span>✅</span>
                   <span>TRANSACCIÓN CANCELADA / PAGADA</span>
@@ -356,6 +356,22 @@ export default function PayoutPage() {
                 </p>
                 <div className="text-[11px] font-mono text-emerald-700 font-bold">
                   Estado actual en el sistema: {STATUS_LABELS[transfer.status] ?? transfer.status}
+                </div>
+                <div className="flex justify-center gap-2 pt-1">
+                  <Button
+                    variant="secondary"
+                    className="border-emerald-600 text-emerald-800 bg-white hover:bg-emerald-100 font-black text-xs py-2 px-3 shadow-xs"
+                    onClick={async () => {
+                      try {
+                        const res = await get<{ paidLink: string; link: string }>(`/transfers/${transfer.id}/whatsapp-link?target=receipt_paid`);
+                        window.open(res.paidLink || res.link, "_blank");
+                      } catch {
+                        window.open(`https://wa.me/?text=${encodeURIComponent(`*VALEX*\nHola ${transfer.sender.fullName}, tu giro REF: ${transfer.reference} por ${transfer.receiveAmount} ${transfer.receiveCurrency} fue entregado con éxito a ${transfer.beneficiary.fullName}.`)}`, "_blank");
+                      }
+                    }}
+                  >
+                    📲 Enviar Constancia de Pago por WhatsApp al Remitente
+                  </Button>
                 </div>
               </div>
             )}

@@ -698,25 +698,43 @@ export default function NewTransferPage() {
               </div>
             )}
 
-            <div className="flex flex-col gap-2 pt-2">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-2.5 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Button
                   variant="secondary"
-                  className="flex-1 border-emerald-600 text-emerald-700 hover:bg-emerald-50 font-bold"
+                  className="border-emerald-600 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 font-black text-xs py-2.5"
                   onClick={async () => {
                     try {
-                      const res = await get<{ link: string }>(`/transfers/${createdTransfer.id}/whatsapp-link`);
-                      window.open(res.link, "_blank");
+                      const res = await get<{ beneficiaryLink: string; link: string }>(`/transfers/${createdTransfer.id}/whatsapp-link?target=beneficiary`);
+                      window.open(res.beneficiaryLink || res.link, "_blank");
                     } catch {
-                      alert(`WhatsApp: Hola ${createdTransfer.beneficiary.fullName}, ${createdTransfer.sender.fullName} te envió un giro con Código Único de VALEX: ${createdTransfer.withdrawalCode}`);
+                      window.open(`https://wa.me/?text=${encodeURIComponent(`*VALEX*\nHola ${createdTransfer.beneficiary.fullName}, ${createdTransfer.sender.fullName} te envió ${createdTransfer.receiveAmount} ${createdTransfer.receiveCurrency}.\nCódigo Único: ${createdTransfer.withdrawalCode}`)}`, "_blank");
                     }
                   }}
                 >
-                  📲 Enviar Notificación WhatsApp
+                  📲 Enviar Código al Beneficiario
                 </Button>
+
                 <Button
                   variant="secondary"
-                  className="flex-1 font-bold"
+                  className="border-blue-600 text-blue-800 bg-blue-50 hover:bg-blue-100 font-black text-xs py-2.5"
+                  onClick={async () => {
+                    try {
+                      const res = await get<{ senderLink: string; link: string }>(`/transfers/${createdTransfer.id}/whatsapp-link?target=sender`);
+                      window.open(res.senderLink || res.link, "_blank");
+                    } catch {
+                      window.open(`https://wa.me/?text=${encodeURIComponent(`*VALEX*\nHola ${createdTransfer.sender.fullName}, tu giro REF: ${createdTransfer.reference} por ${createdTransfer.sendAmount} ${createdTransfer.sendCurrency} ha sido emitido con éxito.`)}`, "_blank");
+                    }
+                  }}
+                >
+                  📲 Enviar Ticket al Remitente
+                </Button>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  className="flex-1 font-bold text-xs py-2"
                   onClick={() =>
                     alert(
                       `🖨️ IMPRIMIENDO TICKET DE REMESA DE VENTANILLA:\n----------------------------------------\nVALEX — CAMBIO & GIROS INT.\nCÓDIGO ÚNICO DE VALEX: ${createdTransfer.withdrawalCode}\nREF: ${createdTransfer.reference}\nREMITENTE: ${createdTransfer.sender.fullName}\nBENEFICIARIO: ${createdTransfer.beneficiary.fullName}\nCOBRADO EN CAJA ORIGEN: ${createdTransfer.sendAmount} ${createdTransfer.sendCurrency}\nNETO A RETIRAR EN DESTINO: ${createdTransfer.receiveAmount} ${createdTransfer.receiveCurrency}\n----------------------------------------`

@@ -36,8 +36,9 @@ export default function HomeScreen() {
     }, [load]),
   );
 
-  const firstName = (customer?.fullName ?? user?.fullName ?? "").split(" ")[0];
-  const kycOk = customer?.kycStatus === "APPROVED";
+  const firstName = (customer?.fullName ?? user?.fullName ?? "Operador").split(" ")[0];
+  const isOperator = user?.role === "ADMIN" || user?.role === "CASHIER" || user?.role === "SUPERVISOR";
+  const kycOk = isOperator || customer?.kycStatus === "APPROVED";
 
   return (
     <Screen>
@@ -47,15 +48,17 @@ export default function HomeScreen() {
             Hola {firstName} 👋
           </Text>
           <Text style={{ color: "#475569", fontSize: 13, fontWeight: "600" }}>
-            VALEX · Envíos Ecuador ↔ Perú
+            {isOperator ? `VALEX · Consola de ${user?.role === "ADMIN" ? "Administración" : "Ventanilla / Caja"}` : "VALEX · Envíos Ecuador ↔ Perú"}
           </Text>
         </View>
-        <View style={{ backgroundColor: "#475569", padding: 4, borderRadius: 10 }}>
-          <Text style={{ color: "#00E5FF", fontWeight: "900", fontSize: 14, letterSpacing: 1 }}>VALEX</Text>
+        <View style={{ backgroundColor: "#475569", paddingVertical: 4, paddingHorizontal: 8, borderRadius: 10 }}>
+          <Text style={{ color: "#00E5FF", fontWeight: "900", fontSize: 13, letterSpacing: 1 }}>
+            {isOperator ? (user?.role === "ADMIN" ? "ADMIN" : "CAJERO") : "VALEX"}
+          </Text>
         </View>
       </View>
 
-      {customer && !kycOk && (
+      {!isOperator && customer && !kycOk && (
         <Card style={{ backgroundColor: COLORS.warning + "14", borderColor: COLORS.warning }}>
           <Text style={{ color: COLORS.warning, fontWeight: "700" }}>
             Tu cuenta está en revisión (KYC {customer.kycStatus}).
@@ -66,18 +69,44 @@ export default function HomeScreen() {
         </Card>
       )}
 
-      <Card>
-        <Button
-          title="Enviar dinero"
-          onPress={() => router.push("/send")}
-          disabled={!kycOk}
-        />
-        {!kycOk && (
-          <Text style={{ color: COLORS.slate400, fontSize: 12, textAlign: "center", marginTop: 8 }}>
-            Requiere KYC aprobado
+      {isOperator ? (
+        <Card style={{ backgroundColor: "#0f172a", borderRadius: 16, padding: 16, marginBottom: 16 }}>
+          <Text style={{ color: "#00E5FF", fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>
+            Operaciones de Ventanilla Móvil
           </Text>
-        )}
-      </Card>
+          <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900", marginBottom: 12 }}>
+            Emisión y Liquidación Inmediata
+          </Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                title="💸 + Emitir VALEX"
+                onPress={() => router.push("/send")}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                title="📥 Ver Giros"
+                variant="secondary"
+                onPress={() => router.push("/operations")}
+              />
+            </View>
+          </View>
+        </Card>
+      ) : (
+        <Card>
+          <Button
+            title="Enviar dinero"
+            onPress={() => router.push("/send")}
+            disabled={!kycOk}
+          />
+          {!kycOk && (
+            <Text style={{ color: COLORS.slate400, fontSize: 12, textAlign: "center", marginTop: 8 }}>
+              Requiere KYC aprobado
+            </Text>
+          )}
+        </Card>
+      )}
 
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <Text style={{ fontSize: 18, fontWeight: "700", color: COLORS.slate900 }}>

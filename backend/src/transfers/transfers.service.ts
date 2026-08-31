@@ -358,18 +358,54 @@ export class TransfersService {
   }
 
   /**
-   * Genera el mensaje y enlace oficial de WhatsApp para notificar al beneficiario.
+   * Genera el mensaje y enlaces oficiales de WhatsApp para remitente y beneficiario.
    */
-  async getWhatsappLink(id: string) {
+  async getWhatsappLink(id: string, target: 'beneficiary' | 'sender' | 'receipt_paid' = 'beneficiary') {
     const transfer = await this.findOne(id);
     if (!transfer.withdrawalCode) {
       throw new BadRequestException('La operación no tiene código de retiro generado');
     }
 
-    const text = `*VALEX — GIROS & DIVISAS*\n\nHola *${transfer.beneficiary.fullName}*,\n\n*${transfer.sender.fullName}* te ha enviado un giro por *${transfer.receiveAmount} ${transfer.receiveCurrency}*.\n\nPuedes retirarlo en cualquier oficina de VALEX presentando tu documento y el siguiente código:\n\n🔑 *Código de Retiro:* ${transfer.withdrawalCode}\n\nVigencia: 30 días. ¡Gracias por confiar en VALEX!`;
-    const encoded = encodeURIComponent(text);
-    const phoneClean = transfer.beneficiary.phone ? transfer.beneficiary.phone.replace(/\D/g, '') : '';
-    const link = phoneClean ? `https://wa.me/${phoneClean}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
-    return { text, link, phone: transfer.beneficiary.phone };
+    const isPaid = transfer.status === TransferStatus.COMPLETED || transfer.status === TransferStatus.PAID;
+
+    // 1. Mensaje para el Beneficiario (Destinatario)
+    const beneficiaryText = `*VALEX — GIROS & DIVISAS INTERNACIONALES*\n\nHola *${transfer.beneficiary.fullName}*,\n\n*${transfer.sender.fullName}* te ha enviado un giro por *${transfer.receiveAmount} ${transfer.receiveCurrency}* (${transfer.payoutMethod === 'CASH' ? 'Retiro en Efectivo en Ventanilla' : transfer.payoutMethod === 'MOBILE_WALLET' ? 'Abono Yape' : 'Transferencia Bancaria'}).\n\n${transfer.payoutMethod === 'CASH' ? 'Presenta tu documento de identidad y este código en ventanilla:\n' : 'Código de Operación:\n'}🔑 *Código Único de VALEX:* ${transfer.withdrawalCode}\n\n📍 Ref: ${transfer.reference}\n🗓️ Vigencia: 30 días.\n\n_VALEX — Tu dinero con más valor._`;
+
+    // 2. Mensaje para el Remitente (Comprobante de Emisión)
+    const senderText = `*VALEX — COMPROBANTE DE EMISIÓN DE GIRO*\n\nHola *${transfer.sender.fullName}*,\nTu giro internacional ha sido registrado exitosamente.\n\n📋 *Detalles de la Operación:*\n• Referencia: *${transfer.reference}*\n• Destinatario: *${transfer.beneficiary.fullName}*\n• Monto Pagado: *${transfer.sendAmount} ${transfer.sendCurrency}*\n• Neto a Entregar: *${transfer.receiveAmount} ${transfer.receiveCurrency}*\n• Forma de Retiro: *${transfer.payoutMethod === 'CASH' ? 'Efectivo en Ventanilla' : transfer.payoutMethod === 'MOBILE_WALLET' ? 'Abono Yape' : 'Cuenta Bancaria'}*\n🔑 *Código Único de VALEX:* ${transfer.withdrawalCode}\n\n_Guarda este comprobante. Gracias por confiar en VALEX._`;
+
+    // 3. Mensaje de Constancia de Entrega / Pago
+    const paidText = `*VALEX — CONSTANCIA DE GIRO ENTREGADO / PAGADO*\n\nEstimado(a) *${transfer.sender.fullName}*,\n\nLe confirmamos que su giro *${transfer.reference}* por *${transfer.receiveAmount} ${transfer.receiveCurrency}* ha sido *CANCELADO / PAGADO* exitosamente a su beneficiario *${transfer.beneficiary.fullName}*.\n\n✅ *Estado:* ENTREGADO / CANCELADO\n🔑 *Código Liquidado:* ${transfer.withdrawalCode}\n\n_¡Gracias por utilizar VALEX!_`;
+
+    const beneficiaryPhoneClean = transfer.beneficiary.phone ? transfer.beneficiary.phone.replace(/\D/g, '') : '';
+    const senderPhoneClean = transfer.sender.phone ? transfer.sender.phone.replace(/\D/g, '') : '';
+
+    const beneficiaryLink = beneficiaryPhoneClean
+      ? `https://wa.me/${beneficiaryPhoneClean}?text=${encodeURIComponent(beneficiaryText)}`
+      : `https://wa.me/?text=${encodeURIComponent(beneficiaryText)}`;
+
+    const senderLink = senderPhoneClean
+      ? `https://wa.me/${senderPhoneClean}?text=${encodeURIComponent(senderText)}`
+      : `https://wa.me/?text=${encodeURIComponent(senderText)}`;
+
+    const paidLink = senderPhoneClean
+      ? `https://wa.me/${senderPhoneClean}?text=${encodeURIComponent(paidText)}`
+      : `https://wa.me/?text=${encodeURIComponent(paidText)}`;
+
+    const selectedText = target === 'sender' ? senderText : target === 'receipt_paid' ? paidText : beneficiaryText;
+    const selectedLink = target === 'sender' ? senderLink : target === 'receipt_paid' ? paidLink : beneficiaryLink;
+    const selectedPhone = target === 'sender' ? transfer.sender.phone : transfer.beneficiary.phone;
+
+    return {
+      text: selectedText,
+      link: selectedLink,
+      phone: selectedPhone,
+      beneficiaryLink,
+      senderLink,
+      paidLink,
+      beneficiaryText,
+      senderText,
+      paidText,
+    };
   }
 }

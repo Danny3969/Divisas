@@ -66,7 +66,7 @@ export class TransfersController {
 
   @Get(':id/whatsapp-link')
   @Roles(Role.CASHIER, Role.SUPERVISOR, Role.ADMIN, Role.CUSTOMER)
-  getWhatsappLink(@Param('id') id: string) {
-    return this.service.getWhatsappLink(id);
+  getWhatsappLink(@Param('id') id: string, @Query('target') target?: 'beneficiary' | 'sender' | 'receipt_paid') {
+    return this.service.getWhatsappLink(id, target);
   }
 }

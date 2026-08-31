@@ -105,11 +105,38 @@ export default function TransferDetailPage() {
             {fmtDate(t.createdAt)}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {t.withdrawalCode && (
-            <Button variant="secondary" onClick={handleOpenWhatsapp} className="border-emerald-600 text-emerald-700 hover:bg-emerald-50">
-              📲 Notificar por WhatsApp
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const res = await get<{ beneficiaryLink: string; link: string }>(`/transfers/${t.id}/whatsapp-link?target=beneficiary`);
+                    window.open(res.beneficiaryLink || res.link, "_blank");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Error al abrir WhatsApp");
+                  }
+                }}
+                className="border-emerald-600 text-emerald-700 hover:bg-emerald-50 text-xs font-bold"
+              >
+                📲 Al Beneficiario
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const res = await get<{ senderLink: string; link: string }>(`/transfers/${t.id}/whatsapp-link?target=sender`);
+                    window.open(res.senderLink || res.link, "_blank");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Error al abrir WhatsApp");
+                  }
+                }}
+                className="border-blue-600 text-blue-700 hover:bg-blue-50 text-xs font-bold"
+              >
+                📲 Al Remitente
+              </Button>
+            </>
           )}
           <Badge className={STATUS_COLORS[t.status]}>
             {STATUS_LABELS[t.status] ?? t.status}

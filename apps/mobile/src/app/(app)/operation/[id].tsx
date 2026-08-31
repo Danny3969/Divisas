@@ -130,18 +130,33 @@ export default function OperationDetailScreen() {
             <Text style={{ color: COLORS.slate600, fontSize: 12, marginTop: 4, marginBottom: 10 }}>
               El beneficiario debe presentar documento y este código en la oficina para retirar. Vigencia: 30 días.
             </Text>
-            <Button
-              title="📲 Enviar Notificación por WhatsApp"
-              onPress={async () => {
-                try {
-                  const res = await get<{ link: string }>(`/transfers/${transfer.id}/whatsapp-link`);
-                  const Linking = require("react-native").Linking;
-                  Linking.openURL(res.link);
-                } catch {
-                  /* fallback */
-                }
-              }}
-            />
+            <View style={{ gap: 8 }}>
+              <Button
+                title="📲 Enviar Código al Beneficiario (WhatsApp)"
+                onPress={async () => {
+                  try {
+                    const res = await get<{ beneficiaryLink: string; link: string }>(`/transfers/${transfer.id}/whatsapp-link?target=beneficiary`);
+                    const Linking = require("react-native").Linking;
+                    Linking.openURL(res.beneficiaryLink || res.link);
+                  } catch {
+                    /* fallback */
+                  }
+                }}
+              />
+              <Button
+                title="📲 Enviar Ticket al Remitente (WhatsApp)"
+                variant="secondary"
+                onPress={async () => {
+                  try {
+                    const res = await get<{ senderLink: string; link: string }>(`/transfers/${transfer.id}/whatsapp-link?target=sender`);
+                    const Linking = require("react-native").Linking;
+                    Linking.openURL(res.senderLink || res.link);
+                  } catch {
+                    /* fallback */
+                  }
+                }}
+              />
+            </View>
           </Card>
         )}
 
